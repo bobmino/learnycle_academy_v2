@@ -1,0 +1,145 @@
+const Lesson = require('../models/Lesson');
+const Module = require('../models/Module');
+const path = require('path');
+const fs = require('fs');
+
+/**
+ * @desc    Get all lessons
+ * @route   GET /api/lessons
+ * @access  Private
+ */
+const getLessons = async (req, res) => {
+  try {
+    const lessons = await Lesson.find({}).populate('module', 'title').sort({ order: 1 });
+    res.json(lessons);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Get lessons by module
+ * @route   GET /api/lessons/module/:moduleId
+ * @access  Private
+ */
+const getLessonsByModule = async (req, res) => {
+  try {
+    const lessons = await Lesson.find({ module: req.params.moduleId }).sort({ order: 1 });
+    res.json(lessons);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Get single lesson
+ * @route   GET /api/lessons/:id
+ * @access  Private
+ */
+const getLessonById = async (req, res) => {
+  try {
+    const lesson = await Lesson.findById(req.params.id).populate('module', 'title');
+    
+    if (!lesson) {
+      return res.status(404).json({ message: 'Lesson not found' });
+    }
+    
+    res.json(lesson);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Create lesson
+ * @route   POST /api/lessons
+ * @access  Private/Teacher/Admin
+ */
+const createLesson = async (req, res) => {
+  try {
+    const { module, title, content, order } = req.body;
+
+    // Verify module exists
+    const moduleExists = await Module.findById(module);
+    if (!moduleExists) {
+      return res.status(404).json({ message: 'Module not found' });
+    }
+
+    const lesson = await Lesson.create({
+      module,
+      title,
+      content,
+      order: order || 0,
+      pdfUrl: req.file ? `/docs/uploads/${req.file.filename}` : null
+    });
+
+    res.status(201).json(lesson);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Update lesson
+ * @route   PUT /api/lessons/:id
+ * @access  Private/Teacher/Admin
+ */
+const updateLesson = async (req, res) => {
+  try {
+    const lesson = await Lesson.findById(req.params.id);
+    
+    if (!lesson) {
+      return res.status(404).json({ message: 'Lesson not found' });
+    }
+
+    lesson.title = req.body.title || lesson.title;
+    lesson.content = req.body.content || lesson.content;
+    lesson.order = req.body.order !== undefined ? req.body.order : lesson.order;
+
+    if (req.file) {
+      lesson.pdfUrl = `/docs/uploads/${req.file.filename}`;
+    }
+
+    const updatedLesson = await lesson.save();
+    res.json(updatedLesson);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Delete lesson
+ * @route   DELETE /api/lessons/:id
+ * @access  Private/Admin
+ */
+const deleteLesson = async (req, res) => {
+  try {
+    const lesson = await Lesson.findById(req.params.id);
+    
+    if (!lesson) {
+      return res.status(404).json({ message: 'Lesson not found' });
+    }
+
+    // Delete associated PDF if exists
+    if (lesson.pdfUrl) {
+      const pdfPath = path.join(__dirname, '..', lesson.pdfUrl);
+      if (fs.existsSync(pdfPath)) {
+        fs.unlinkSync(pdfPath);
+      }
+    }
+
+    await lesson.deleteOne();
+    res.json({ message: 'Lesson removed' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = {
+  getLessons,
+  getLessonsByModule,
+  getLessonById,
+  createLesson,
+  updateLesson,
+  deleteLesson
+};

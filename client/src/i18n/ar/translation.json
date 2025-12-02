@@ -1,0 +1,74 @@
+{
+  "translation": {
+    "app": {
+      "title": "أكاديمية LearnCycle",
+      "welcome": "مرحبا"
+    },
+    "nav": {
+      "home": "الرئيسية",
+      "modules": "الوحدات",
+      "dashboard": "لوحة التحكم",
+      "login": "تسجيل الدخول",
+      "register": "التسجيل",
+      "logout": "تسجيل الخروج",
+      "teamwork": "العمل الجماعي"
+    },
+    "auth": {
+      "login": "تسجيل الدخول",
+      "register": "التسجيل",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور",
+      "name": "الاسم",
+      "confirmPassword": "تأكيد كلمة المرور",
+      "loginButton": "دخول",
+      "registerButton": "إنشاء حساب",
+      "noAccount": "ليس لديك حساب؟",
+      "hasAccount": "لديك حساب بالفعل؟",
+      "forgotPassword": "نسيت كلمة المرور؟"
+    },
+    "dashboard": {
+      "student": "لوحة تحكم الطالب",
+      "teacher": "لوحة تحكم المعلم",
+      "admin": "لوحة تحكم المشرف",
+      "myProgress": "تقدمي",
+      "modules": "وحداتي",
+      "createModule": "إنشاء وحدة",
+      "createLesson": "إنشاء درس"
+    },
+    "modules": {
+      "title": "وحدات التدريب",
+      "caseStudies": "دراسات الحالة",
+      "cafe": "مقهى",
+      "restaurant": "مطعم",
+      "hotel": "فندق",
+      "viewModule": "عرض الوحدة",
+      "downloadPDF": "تحميل PDF"
+    },
+    "prospect": {
+      "title": "نموذج الاكتشاف",
+      "fullName": "الاسم الكامل",
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف",
+      "interests": "اهتماماتك",
+      "submit": "إرسال",
+      "success": "شكرا لك! سنتواصل معك قريبا."
+    },
+    "landing": {
+      "hero": "تعلم بناء التطبيقات الحديثة",
+      "subtitle": "تدريب كامل للمطورين المبتدئين والمتوسطين",
+      "cta": "ابدأ الآن",
+      "howItWorks": "كيف يعمل",
+      "caseStudies": "دراسات حالة حقيقية"
+    },
+    "common": {
+      "save": "حفظ",
+      "cancel": "إلغاء",
+      "edit": "تعديل",
+      "delete": "حذف",
+      "search": "بحث",
+      "loading": "جاري التحميل...",
+      "error": "خطأ",
+      "success": "نجاح"
+    }
+  }
+}

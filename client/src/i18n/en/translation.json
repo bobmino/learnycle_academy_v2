@@ -1,0 +1,74 @@
+{
+  "translation": {
+    "app": {
+      "title": "LearnCycle Academy",
+      "welcome": "Welcome"
+    },
+    "nav": {
+      "home": "Home",
+      "modules": "Modules",
+      "dashboard": "Dashboard",
+      "login": "Login",
+      "register": "Register",
+      "logout": "Logout",
+      "teamwork": "Teamwork"
+    },
+    "auth": {
+      "login": "Login",
+      "register": "Register",
+      "email": "Email",
+      "password": "Password",
+      "name": "Name",
+      "confirmPassword": "Confirm Password",
+      "loginButton": "Sign In",
+      "registerButton": "Create Account",
+      "noAccount": "Don't have an account?",
+      "hasAccount": "Already have an account?",
+      "forgotPassword": "Forgot password?"
+    },
+    "dashboard": {
+      "student": "Student Dashboard",
+      "teacher": "Teacher Dashboard",
+      "admin": "Admin Dashboard",
+      "myProgress": "My Progress",
+      "modules": "My Modules",
+      "createModule": "Create Module",
+      "createLesson": "Create Lesson"
+    },
+    "modules": {
+      "title": "Training Modules",
+      "caseStudies": "Case Studies",
+      "cafe": "Café",
+      "restaurant": "Restaurant",
+      "hotel": "Hotel",
+      "viewModule": "View Module",
+      "downloadPDF": "Download PDF"
+    },
+    "prospect": {
+      "title": "Discovery Form",
+      "fullName": "Full Name",
+      "email": "Email",
+      "phone": "Phone",
+      "interests": "Your Interests",
+      "submit": "Submit",
+      "success": "Thank you! We will contact you soon."
+    },
+    "landing": {
+      "hero": "Learn to Build Modern Applications",
+      "subtitle": "Complete training for beginner and intermediate developers",
+      "cta": "Get Started Now",
+      "howItWorks": "How It Works",
+      "caseStudies": "Real Case Studies"
+    },
+    "common": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "delete": "Delete",
+      "search": "Search",
+      "loading": "Loading...",
+      "error": "Error",
+      "success": "Success"
+    }
+  }
+}

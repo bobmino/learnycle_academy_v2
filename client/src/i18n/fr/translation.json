@@ -1,0 +1,74 @@
+{
+  "translation": {
+    "app": {
+      "title": "LearnCycle Academy",
+      "welcome": "Bienvenue"
+    },
+    "nav": {
+      "home": "Accueil",
+      "modules": "Modules",
+      "dashboard": "Tableau de bord",
+      "login": "Connexion",
+      "register": "S'inscrire",
+      "logout": "Déconnexion",
+      "teamwork": "Travail d'équipe"
+    },
+    "auth": {
+      "login": "Connexion",
+      "register": "S'inscrire",
+      "email": "Email",
+      "password": "Mot de passe",
+      "name": "Nom",
+      "confirmPassword": "Confirmer le mot de passe",
+      "loginButton": "Se connecter",
+      "registerButton": "Créer un compte",
+      "noAccount": "Pas de compte ?",
+      "hasAccount": "Déjà un compte ?",
+      "forgotPassword": "Mot de passe oublié ?"
+    },
+    "dashboard": {
+      "student": "Tableau de bord étudiant",
+      "teacher": "Tableau de bord professeur",
+      "admin": "Tableau de bord admin",
+      "myProgress": "Ma progression",
+      "modules": "Mes modules",
+      "createModule": "Créer un module",
+      "createLesson": "Créer une leçon"
+    },
+    "modules": {
+      "title": "Modules de formation",
+      "caseStudies": "Études de cas",
+      "cafe": "Café",
+      "restaurant": "Restaurant",
+      "hotel": "Hôtel",
+      "viewModule": "Voir le module",
+      "downloadPDF": "Télécharger le PDF"
+    },
+    "prospect": {
+      "title": "Formulaire de découverte",
+      "fullName": "Nom complet",
+      "email": "Email",
+      "phone": "Téléphone",
+      "interests": "Vos intérêts",
+      "submit": "Envoyer",
+      "success": "Merci ! Nous vous contacterons bientôt."
+    },
+    "landing": {
+      "hero": "Apprenez à créer des applications modernes",
+      "subtitle": "Formations complètes pour développeurs débutants et intermédiaires",
+      "cta": "Commencer maintenant",
+      "howItWorks": "Comment ça marche",
+      "caseStudies": "Études de cas réelles"
+    },
+    "common": {
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "search": "Rechercher",
+      "loading": "Chargement...",
+      "error": "Erreur",
+      "success": "Succès"
+    }
+  }
+}

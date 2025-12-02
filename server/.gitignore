@@ -1,0 +1,7 @@
+node_modules/
+.env
+.DS_Store
+docs/uploads/*
+!docs/uploads/.gitkeep
+!docs/templates/
+*.log
