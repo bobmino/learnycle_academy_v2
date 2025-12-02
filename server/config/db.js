@@ -45,7 +45,6 @@ const connectDB = async () => {
       maxPoolSize: 1, // Important for serverless - limit connections
       minPoolSize: 0,
       bufferCommands: false, // Disable mongoose buffering
-      bufferMaxEntries: 0,
       retryWrites: true,
       w: 'majority',
     });
