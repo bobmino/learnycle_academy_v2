@@ -11,6 +11,21 @@ const register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
+    // Validate required fields
+    if (!name || !email || !password) {
+      return res.status(400).json({ 
+        message: 'Please provide name, email, and password' 
+      });
+    }
+
+    // Check MongoDB connection
+    const mongoose = require('mongoose');
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ 
+        message: 'Database not connected. Please try again in a moment.' 
+      });
+    }
+
     // Check if user exists
     const userExists = await User.findOne({ email });
 
@@ -54,7 +69,15 @@ const register = async (req, res) => {
       });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Registration error:', error);
+    // Provide more detailed error information
+    const errorMessage = error.message || 'Internal server error';
+    const statusCode = error.name === 'ValidationError' ? 400 : 500;
+    
+    res.status(statusCode).json({ 
+      message: errorMessage,
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 

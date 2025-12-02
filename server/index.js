@@ -48,13 +48,29 @@ app.use(async (req, res, next) => {
     // Only connect if not already connected
     if (mongoose.connection.readyState !== 1) {
       console.log('Connecting to MongoDB...');
-      await connectDB();
-      console.log('MongoDB connection established');
+      try {
+        await connectDB();
+        console.log('MongoDB connection established');
+      } catch (dbError) {
+        console.error('Failed to connect to MongoDB:', dbError.message);
+        // For API routes, return error response
+        if (req.path.startsWith('/api')) {
+          return res.status(503).json({ 
+            message: 'Database connection failed. Please try again in a moment.',
+            error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+          });
+        }
+        // For other routes, continue (frontend will handle)
+      }
     }
   } catch (err) {
     console.error('Database connection error in middleware:', err.message);
-    // Don't block the request, but log the error
-    // The route handlers will handle the error appropriately
+    if (req.path.startsWith('/api')) {
+      return res.status(503).json({ 
+        message: 'Database unavailable',
+        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+      });
+    }
   }
   next();
 });
