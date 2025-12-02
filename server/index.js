@@ -44,6 +44,11 @@ app.use("/docs", express.static(path.join(__dirname, "docs")));
 
 // Ensure database connection for serverless (lazy connection)
 app.use(async (req, res, next) => {
+  // Allow diagnostic endpoint to pass through even without DB connection
+  if (req.path === '/api/diagnostic' || req.path === '/api/health') {
+    return next();
+  }
+
   try {
     // Only connect if not already connected
     if (mongoose.connection.readyState !== 1) {
@@ -75,7 +80,7 @@ app.use(async (req, res, next) => {
     }
   } catch (err) {
     console.error('Database connection error in middleware:', err.message);
-    if (req.path.startsWith('/api')) {
+    if (req.path.startsWith('/api') && req.path !== '/api/diagnostic' && req.path !== '/api/health') {
       return res.status(503).json({ 
         message: 'Database unavailable',
         error: process.env.NODE_ENV === 'development' ? err.message : undefined
@@ -99,17 +104,82 @@ app.get("/api/health", async (req, res) => {
   try {
     // Check database connection
     const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    const hasMongoUri = !!process.env.MONGO_URI;
+    const mongoUriPreview = hasMongoUri 
+      ? process.env.MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@').split('@')[1] || 'configured'
+      : 'not set';
     
     res.json({ 
       status: "ok", 
       message: "Server is running", 
       timestamp: new Date().toISOString(),
-      database: dbStatus
+      database: dbStatus,
+      mongoUri: mongoUriPreview,
+      nodeEnv: process.env.NODE_ENV || 'not set'
     });
   } catch (error) {
     res.status(500).json({ 
       status: "error", 
       message: error.message 
+    });
+  }
+});
+
+// Diagnostic endpoint for MongoDB connection
+app.get("/api/diagnostic", async (req, res) => {
+  try {
+    const mongoose = require('mongoose');
+    const hasMongoUri = !!process.env.MONGO_URI;
+    const mongoUriPreview = hasMongoUri 
+      ? process.env.MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@')
+      : 'NOT SET';
+    
+    const diagnostic = {
+      timestamp: new Date().toISOString(),
+      environment: {
+        nodeEnv: process.env.NODE_ENV || 'not set',
+        vercel: process.env.VERCEL === '1' ? 'yes' : 'no',
+        cwd: process.cwd()
+      },
+      mongodb: {
+        hasUri: hasMongoUri,
+        uriPreview: mongoUriPreview,
+        connectionState: mongoose.connection.readyState,
+        connectionStateText: {
+          0: 'disconnected',
+          1: 'connected',
+          2: 'connecting',
+          3: 'disconnecting'
+        }[mongoose.connection.readyState] || 'unknown',
+        host: mongoose.connection.host || 'not connected',
+        name: mongoose.connection.name || 'not connected'
+      },
+      envVars: {
+        hasJwtAccess: !!process.env.JWT_ACCESS_SECRET,
+        hasJwtRefresh: !!process.env.JWT_REFRESH_SECRET,
+        clientUrl: process.env.CLIENT_URL || 'not set'
+      }
+    };
+
+    // Try to connect if not connected
+    if (mongoose.connection.readyState !== 1 && hasMongoUri) {
+      try {
+        await connectDB();
+        diagnostic.mongodb.connectionState = mongoose.connection.readyState;
+        diagnostic.mongodb.connectionStateText = 'connected';
+        diagnostic.mongodb.host = mongoose.connection.host;
+        diagnostic.mongodb.name = mongoose.connection.name;
+      } catch (error) {
+        diagnostic.mongodb.connectionError = error.message;
+        diagnostic.mongodb.errorName = error.name;
+      }
+    }
+
+    res.json(diagnostic);
+  } catch (error) {
+    res.status(500).json({ 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
