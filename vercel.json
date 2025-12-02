@@ -1,13 +1,7 @@
 {
-  "version": 2,
   "buildCommand": "cd client && npm install && npm run build",
   "outputDirectory": "client/dist",
   "installCommand": "npm install --prefix client && npm install --prefix server",
-  "functions": {
-    "api/[...slug].js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/(.*)",
