@@ -27,27 +27,46 @@ const connectDB = async () => {
   
   if (!mongoUri) {
     const error = new Error('MONGO_URI environment variable is not set');
-    console.error(error.message);
+    console.error('❌ MongoDB Error:', error.message);
+    console.error('Please set MONGO_URI in your environment variables');
     throw error;
   }
+
+  // Log connection attempt (without showing full URI for security)
+  const uriPreview = mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@');
+  console.log('🔌 Attempting MongoDB connection to:', uriPreview.split('@')[1] || 'cluster');
 
   try {
     const conn = await mongoose.connect(mongoUri, {
       // Serverless-friendly options
-      serverSelectionTimeoutMS: 10000, // Increased from 5000ms
+      serverSelectionTimeoutMS: 15000, // Increased to 15 seconds
       socketTimeoutMS: 45000,
-      connectTimeoutMS: 10000,
+      connectTimeoutMS: 15000,
       maxPoolSize: 1, // Important for serverless - limit connections
       minPoolSize: 0,
       bufferCommands: false, // Disable mongoose buffering
       bufferMaxEntries: 0,
+      retryWrites: true,
+      w: 'majority',
     });
 
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    console.log(`📊 Database: ${conn.connection.name}`);
     cachedConnection = conn;
     return conn;
   } catch (error) {
-    console.error(`MongoDB Connection Error: ${error.message}`);
+    console.error(`❌ MongoDB Connection Error: ${error.message}`);
+    console.error(`Error name: ${error.name}`);
+    
+    // Provide more helpful error messages
+    if (error.message.includes('authentication failed')) {
+      console.error('💡 Check your MongoDB username and password');
+    } else if (error.message.includes('timeout')) {
+      console.error('💡 Connection timeout - check MongoDB Atlas Network Access (whitelist)');
+    } else if (error.message.includes('ENOTFOUND') || error.message.includes('getaddrinfo')) {
+      console.error('💡 DNS resolution failed - check your MongoDB URI format');
+    }
+    
     // In serverless, don't exit process - just throw error
     if (process.env.NODE_ENV === 'production') {
       throw error;

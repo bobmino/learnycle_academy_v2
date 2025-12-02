@@ -52,12 +52,22 @@ app.use(async (req, res, next) => {
         await connectDB();
         console.log('MongoDB connection established');
       } catch (dbError) {
-        console.error('Failed to connect to MongoDB:', dbError.message);
-        // For API routes, return error response
+        console.error('❌ Failed to connect to MongoDB:', dbError.message);
+        console.error('Error details:', {
+          name: dbError.name,
+          message: dbError.message,
+          hasMONGO_URI: !!process.env.MONGO_URI
+        });
+        
+        // For API routes, return error response with helpful message
         if (req.path.startsWith('/api')) {
+          const errorMessage = dbError.message || 'Database connection failed';
+          const isDev = process.env.NODE_ENV === 'development';
+          
           return res.status(503).json({ 
-            message: 'Database connection failed. Please try again in a moment.',
-            error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+            message: 'Database connection failed. Please check your MongoDB configuration.',
+            error: isDev ? errorMessage : undefined,
+            hint: isDev ? 'Check MONGO_URI and MongoDB Atlas Network Access' : undefined
           });
         }
         // For other routes, continue (frontend will handle)
