@@ -45,11 +45,16 @@ app.use("/docs", express.static(path.join(__dirname, "docs")));
 // Ensure database connection for serverless (lazy connection)
 app.use(async (req, res, next) => {
   try {
+    // Only connect if not already connected
     if (mongoose.connection.readyState !== 1) {
+      console.log('Connecting to MongoDB...');
       await connectDB();
+      console.log('MongoDB connection established');
     }
   } catch (err) {
-    console.error('Database connection error:', err);
+    console.error('Database connection error in middleware:', err.message);
+    // Don't block the request, but log the error
+    // The route handlers will handle the error appropriately
   }
   next();
 });
