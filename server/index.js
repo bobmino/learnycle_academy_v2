@@ -32,17 +32,17 @@ app.use(cors(corsOptions));
 // Static files for docs (PDFs)
 app.use("/docs", express.static(path.join(__dirname, "docs")));
 
-// Routes
-app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api/users", require("./routes/userRoutes"));
-app.use("/api/modules", require("./routes/moduleRoutes"));
-app.use("/api/lessons", require("./routes/lessonRoutes"));
-app.use("/api/quiz", require("./routes/quizRoutes"));
-app.use("/api/prospects", require("./routes/prospectRoutes"));
-app.use("/api/progress", require("./routes/progressRoutes"));
+// Routes - No /api prefix needed, Vercel handles it
+app.use("/auth", require("./routes/authRoutes"));
+app.use("/users", require("./routes/userRoutes"));
+app.use("/modules", require("./routes/moduleRoutes"));
+app.use("/lessons", require("./routes/lessonRoutes"));
+app.use("/quiz", require("./routes/quizRoutes"));
+app.use("/prospects", require("./routes/prospectRoutes"));
+app.use("/progress", require("./routes/progressRoutes"));
 
 // Health check endpoint
-app.get("/api/health", (req, res) => {
+app.get("/health", (req, res) => {
   res.json({ status: "ok", message: "Server is running" });
 });
 
