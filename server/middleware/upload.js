@@ -2,38 +2,53 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Detect if running on Vercel (serverless environment)
-const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV || process.env.NOW_REGION;
-
-// On Vercel, use /tmp for uploads (only writable directory in serverless)
-// In development, use the local docs/uploads directory
-const uploadDir = isVercel 
-  ? '/tmp/uploads'
-  : path.join(__dirname, '../docs/uploads');
-
-// Ensure upload directory exists (only in non-Vercel environments)
-// On Vercel, we'll create it lazily when needed
-if (!isVercel && !fs.existsSync(uploadDir)) {
-  try {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  } catch (error) {
-    console.error('Error creating upload directory:', error);
+// Determine upload directory based on environment
+// In production/serverless (Vercel), use /tmp (only writable directory)
+// In development, use local docs/uploads directory
+const getUploadDir = () => {
+  // Check if we're in a serverless environment
+  // Vercel sets VERCEL=1, or we can check the working directory
+  const cwd = process.cwd();
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isVercel = process.env.VERCEL === '1' || cwd.includes('/var/task');
+  
+  if (isProduction || isVercel) {
+    return '/tmp/uploads';
   }
-}
+  return path.join(__dirname, '../docs/uploads');
+};
+
+// Don't create directory at module load time - create it lazily when needed
+// This prevents errors in serverless environments where filesystem is read-only
 
 // Configure multer storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // On Vercel, ensure /tmp/uploads exists before using it
-    if (isVercel && !fs.existsSync(uploadDir)) {
-      try {
+    // Get upload directory (lazy evaluation)
+    const uploadDir = getUploadDir();
+    
+    // Create directory only when actually needed (lazy creation)
+    // This prevents errors in serverless environments
+    try {
+      if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
-      } catch (error) {
-        console.error('Error creating /tmp/uploads:', error);
-        return cb(error);
+      }
+      cb(null, uploadDir);
+    } catch (error) {
+      // If we can't create the directory, try /tmp as fallback (for serverless)
+      const cwd = process.cwd();
+      const isProduction = process.env.NODE_ENV === 'production';
+      const isVercel = process.env.VERCEL === '1' || cwd.includes('/var/task');
+      
+      if (isProduction || isVercel) {
+        const fallbackDir = '/tmp';
+        console.warn(`Could not create ${uploadDir}, using ${fallbackDir} as fallback`);
+        cb(null, fallbackDir);
+      } else {
+        console.error('Error creating upload directory:', error);
+        cb(error);
       }
     }
-    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
