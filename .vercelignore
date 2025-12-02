@@ -1,0 +1,11 @@
+node_modules
+.git
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+server/docs/uploads/*
+!server/docs/templates
+client/node_modules
+server/node_modules

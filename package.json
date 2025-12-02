@@ -1,0 +1,17 @@
+{
+  "name": "learncycle-academy",
+  "version": "1.0.0",
+  "description": "LearnCycle Academy - Monorepo",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install --prefix client && npm install --prefix server",
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "build:client": "cd client && npm run build",
+    "build": "npm run build:client"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
