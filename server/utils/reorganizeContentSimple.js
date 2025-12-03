@@ -19,13 +19,25 @@ const reorganizeContentSimple = async () => {
   try {
     console.log('🔄 Starting simple reorganization process...');
     
-    // Connect to database if not already connected
+    // Use existing connection - don't try to connect if already connected
+    // On Vercel/serverless, connection is managed by the main server
     if (mongoose.connection.readyState !== 1) {
-      console.log('📡 Connecting to MongoDB...');
-      await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/learncycle');
-      console.log('✅ Connected to MongoDB');
+      console.log('⚠️  MongoDB not connected. Attempting connection...');
+      try {
+        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/learncycle', {
+          serverSelectionTimeoutMS: 5000
+        });
+        console.log('✅ Connected to MongoDB');
+      } catch (connectError) {
+        console.error('❌ Failed to connect to MongoDB:', connectError.message);
+        return {
+          success: false,
+          message: 'Database connection failed',
+          error: connectError.message
+        };
+      }
     } else {
-      console.log('✅ Already connected to MongoDB');
+      console.log('✅ Using existing MongoDB connection');
     }
 
     // Get admin user
@@ -133,39 +145,84 @@ const reorganizeContentSimple = async () => {
 
     // Get all existing lessons from all modules
     console.log('📖 Fetching all existing lessons...');
-    const allLessons = await Lesson.find({}).populate('module', 'title');
-    console.log(`📚 Found ${allLessons.length} lessons to reorganize`);
+    let allLessons = [];
+    try {
+      allLessons = await Lesson.find({}).populate('module', 'title').lean();
+      console.log(`📚 Found ${allLessons.length} lessons to reorganize`);
+    } catch (error) {
+      console.error('❌ Error fetching lessons:', error);
+      throw new Error(`Failed to fetch lessons: ${error.message}`);
+    }
 
     // Move all lessons to the Économie module
     let lessonOrder = 1;
     let lessonsMoved = 0;
+    let lessonsSkipped = 0;
+    
+    // First, get current lesson count in Économie module to set correct order
+    const existingEconomyLessons = await Lesson.countDocuments({ module: economyModule._id });
+    if (existingEconomyLessons > 0) {
+      lessonOrder = existingEconomyLessons + 1;
+      console.log(`ℹ️  Found ${existingEconomyLessons} existing lessons in Économie module, starting order from ${lessonOrder}`);
+    }
+    
     for (const lesson of allLessons) {
-      // Skip if already in Économie module
-      if (lesson.module && lesson.module._id && lesson.module._id.toString() === economyModule._id.toString()) {
-        console.log(`ℹ️  Lesson "${lesson.title}" already in Économie module, skipping...`);
-        continue;
-      }
-
       try {
-        lesson.module = economyModule._id;
-        lesson.order = lessonOrder++;
-        lesson.category = economyLessonCategory?._id || null;
-        await lesson.save();
-        lessonsMoved++;
-        console.log(`✅ Moved lesson: ${lesson.title}`);
+        // Skip if already in Économie module
+        // Handle both populated and non-populated module references
+        let currentModuleId = null;
+        if (lesson.module) {
+          if (typeof lesson.module === 'object' && lesson.module._id) {
+            currentModuleId = lesson.module._id.toString();
+          } else {
+            currentModuleId = lesson.module.toString();
+          }
+        }
+        
+        if (currentModuleId && currentModuleId === economyModule._id.toString()) {
+          console.log(`ℹ️  Lesson "${lesson.title}" already in Économie module, skipping...`);
+          lessonsSkipped++;
+          continue;
+        }
+
+        // Update lesson using updateOne for better performance
+        const updateResult = await Lesson.updateOne(
+          { _id: lesson._id },
+          {
+            $set: {
+              module: economyModule._id,
+              order: lessonOrder++,
+              category: economyLessonCategory?._id || null
+            }
+          }
+        );
+        
+        if (updateResult.modifiedCount > 0) {
+          lessonsMoved++;
+          console.log(`✅ Moved lesson: ${lesson.title}`);
+        } else if (updateResult.matchedCount > 0) {
+          console.log(`ℹ️  Lesson "${lesson.title}" was not modified (may already be in correct module)`);
+        }
       } catch (error) {
-        console.error(`❌ Error moving lesson "${lesson.title}":`, error);
-        // Continue with next lesson
+        console.error(`❌ Error moving lesson "${lesson.title || lesson._id}":`, error.message);
+        // Continue with next lesson - don't fail entire operation
       }
     }
-    console.log(`✅ Moved ${lessonsMoved} lessons to Économie module`);
+    console.log(`✅ Moved ${lessonsMoved} lessons to Économie module (${lessonsSkipped} already there)`);
 
     // Get modules with caseStudyType (cafe, restaurant, hotel)
     console.log('☕🍽️🏨 Fetching case study modules...');
-    const caseStudyModules = await Module.find({
-      caseStudyType: { $in: ['cafe', 'restaurant', 'hotel'] }
-    });
-    console.log(`📋 Found ${caseStudyModules.length} case study modules`);
+    let caseStudyModules = [];
+    try {
+      caseStudyModules = await Module.find({
+        caseStudyType: { $in: ['cafe', 'restaurant', 'hotel'] }
+      }).lean();
+      console.log(`📋 Found ${caseStudyModules.length} case study modules`);
+    } catch (error) {
+      console.error('❌ Error fetching case study modules:', error);
+      // Don't throw - continue without case studies if there's an error
+      caseStudyModules = [];
+    }
 
     // Create projects from case study modules
     const caseStudyProjects = [];
@@ -202,13 +259,20 @@ const reorganizeContentSimple = async () => {
         
         if (project) {
           console.log(`ℹ️  Project "${projectName}" already exists. Updating...`);
-          project.description = projectDescription;
-          project.modules = [economyModule._id];
-          project.type = 'case-study';
-          project.category = caseStudyCategory?._id || null;
-          project.isTransversal = false;
-          await project.save();
+          await Project.updateOne(
+            { _id: project._id },
+            {
+              $set: {
+                description: projectDescription,
+                modules: [economyModule._id],
+                type: 'case-study',
+                category: caseStudyCategory?._id || null,
+                isTransversal: false
+              }
+            }
+          );
           caseStudyProjects.push(projectName);
+          console.log(`✅ Updated project: ${projectName}`);
         } else {
           console.log(`📝 Creating project: ${projectName}...`);
           project = await Project.create({
@@ -238,11 +302,13 @@ const reorganizeContentSimple = async () => {
     // Deactivate old case study modules
     for (const caseModule of caseStudyModules) {
       try {
-        caseModule.isActive = false;
-        await caseModule.save();
+        await Module.updateOne(
+          { _id: caseModule._id },
+          { $set: { isActive: false } }
+        );
         console.log(`ℹ️  Deactivated case study module: ${caseModule.title}`);
       } catch (error) {
-        console.error(`❌ Error deactivating module "${caseModule.title}":`, error);
+        console.error(`❌ Error deactivating module "${caseModule.title}":`, error.message);
       }
     }
 
@@ -262,13 +328,25 @@ const reorganizeContentSimple = async () => {
         console.log('✅ Created formation: Projet clé en main');
       } catch (error) {
         console.error('❌ Error creating formation:', error);
+        console.error('Formation error details:', error.errors || error.message);
         throw new Error(`Failed to create formation: ${error.message}`);
       }
     } else {
-      formation.modules = [economyModule._id];
-      formation.category = economyModuleCategory?._id || null;
-      await formation.save();
-      console.log('✅ Updated formation: Projet clé en main');
+      try {
+        await Formation.updateOne(
+          { _id: formation._id },
+          {
+            $set: {
+              modules: [economyModule._id],
+              category: economyModuleCategory?._id || null
+            }
+          }
+        );
+        console.log('✅ Updated formation: Projet clé en main');
+      } catch (error) {
+        console.error('❌ Error updating formation:', error);
+        throw new Error(`Failed to update formation: ${error.message}`);
+      }
     }
 
     // Get final lesson count

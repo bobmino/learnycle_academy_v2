@@ -63,6 +63,8 @@ const organizeFormationContent = async (req, res) => {
 const reorganizeContentData = async (req, res) => {
   try {
     console.log('🔄 Starting content reorganization (simple method)...');
+    console.log('Request user:', req.user?.email, req.user?.role);
+    
     // Use the simple reorganization method that just moves existing content
     const result = await reorganizeContentSimple();
     
@@ -76,19 +78,46 @@ const reorganizeContentData = async (req, res) => {
         caseStudyNames: result.caseStudyNames
       });
     } else {
-      console.error('❌ Reorganization failed:', result.message, result.error);
-      res.status(400).json({
+      console.error('❌ Reorganization failed:', result.message);
+      console.error('Error details:', result.error);
+      console.error('Error type:', result.errorType);
+      
+      // Return detailed error information
+      const errorResponse = {
         message: result.message || 'Error reorganizing content',
-        error: result.error || 'Unknown error',
-        errorType: result.errorType
-      });
+        error: result.error || 'Unknown error'
+      };
+      
+      if (result.errorType) {
+        errorResponse.errorType = result.errorType;
+      }
+      
+      res.status(400).json(errorResponse);
     }
   } catch (error) {
-    console.error('❌ Error reorganizing content:', error);
+    console.error('❌ Exception in reorganizeContentData:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
+    
+    // Check if it's a validation error
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.keys(error.errors || {}).map(key => ({
+        field: key,
+        message: error.errors[key].message
+      }));
+      
+      return res.status(400).json({
+        message: 'Validation error',
+        error: 'Invalid data provided',
+        validationErrors: validationErrors
+      });
+    }
+    
     res.status(500).json({ 
       message: 'Failed to reorganize content', 
-      error: error.message,
+      error: error.message || 'Internal server error',
+      errorType: error.name,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
