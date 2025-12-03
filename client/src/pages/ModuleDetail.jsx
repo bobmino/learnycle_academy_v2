@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 import { 
@@ -8,10 +8,13 @@ import {
   quizService, 
   progressService,
   gradeService,
-  discussionService
+  discussionService,
+  approvalService
 } from '../services/api';
 import ProgressBar from '../components/ProgressBar';
 import GradeDisplay from '../components/GradeDisplay';
+import Breadcrumbs from '../components/Breadcrumbs';
+import BackButton from '../components/BackButton';
 
 /**
  * Module Detail Page
@@ -32,7 +35,12 @@ const ModuleDetail = () => {
   const [quizAnswers, setQuizAnswers] = useState({});
   const [quizResult, setQuizResult] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('lessons'); // 'lessons', 'quiz', 'discussion'
+  const [activeTab, setActiveTab] = useState('lessons'); // 'lessons', 'quiz', 'discussion', 'projects'
+  const [previousModule, setPreviousModule] = useState(null);
+  const [nextModule, setNextModule] = useState(null);
+  const [isApproved, setIsApproved] = useState(true);
+  const [approvalStatus, setApprovalStatus] = useState(null);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
 
   useEffect(() => {
     fetchModuleData();
@@ -48,6 +56,10 @@ const ModuleDetail = () => {
       setModule(moduleRes.data.module);
       setLessons(moduleRes.data.lessons);
       setProgress(progressRes.data);
+      setPreviousModule(moduleRes.data.previousModule);
+      setNextModule(moduleRes.data.nextModule);
+      setIsApproved(moduleRes.data.isApproved);
+      setApprovalStatus(moduleRes.data.approvalStatus);
 
       // Fetch quizzes
       try {
@@ -153,15 +165,38 @@ const ModuleDetail = () => {
     );
   }
 
+  const handleRequestApproval = async () => {
+    try {
+      await approvalService.request(id);
+      alert('Demande d\'approbation envoyée');
+      setShowApprovalModal(false);
+      fetchModuleData();
+    } catch (error) {
+      alert('Erreur: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
   return (
     <div className="container-custom py-8">
+      {/* Breadcrumbs */}
+      <Breadcrumbs
+        items={[
+          { label: 'Dashboard', to: '/dashboard' },
+          { label: 'Modules', to: '/modules' },
+          { label: module?.title || 'Module' }
+        ]}
+      />
+
       {/* Module Header */}
       <div className="card mb-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <h1 className="section-header mb-2">
-              {module.title}
-            </h1>
+            <div className="flex items-center gap-4 mb-2">
+              <BackButton to="/modules" />
+              <h1 className="section-header mb-0">
+                {module.title}
+              </h1>
+            </div>
             <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">
               {module.description}
             </p>
@@ -183,17 +218,73 @@ const ModuleDetail = () => {
               </div>
             </div>
           </div>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="btn-secondary"
-          >
-            ← Retour
-          </button>
         </div>
+
+        {/* Approval Status */}
+        {!isApproved && (
+          <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-yellow-800 dark:text-yellow-300">
+                  {approvalStatus === 'pending' 
+                    ? 'Demande d\'approbation en attente'
+                    : approvalStatus === 'rejected'
+                    ? 'Demande d\'approbation rejetée'
+                    : 'Ce module nécessite une approbation'}
+                </p>
+                <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
+                  Vous pouvez prévisualiser le contenu mais ne pouvez pas le compléter sans approbation.
+                </p>
+              </div>
+              {approvalStatus !== 'pending' && (
+                <button
+                  onClick={() => setShowApprovalModal(true)}
+                  className="btn-primary text-sm"
+                >
+                  Demander Approbation
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Progress Bar */}
         <div className="mt-4">
           <ProgressBar progress={getModuleProgress()} />
+        </div>
+
+        {/* Navigation Modules */}
+        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+          {previousModule ? (
+            <Link
+              to={`/modules/${previousModule._id}`}
+              className="btn-outline flex items-center gap-2"
+            >
+              ← Module Précédent
+              <span className="text-sm opacity-75">{previousModule.title}</span>
+            </Link>
+          ) : (
+            <div></div>
+          )}
+          {nextModule ? (
+            <Link
+              to={`/modules/${nextModule._id}`}
+              className={`flex items-center gap-2 ${
+                nextModule.accessible ? 'btn-primary' : 'btn-secondary opacity-50 cursor-not-allowed'
+              }`}
+              onClick={(e) => {
+                if (!nextModule.accessible) {
+                  e.preventDefault();
+                  alert('Vous devez compléter ce module et obtenir une approbation pour accéder au module suivant');
+                }
+              }}
+            >
+              <span className="text-sm opacity-75">{nextModule.title}</span>
+              Module Suivant →
+            </Link>
+          ) : (
+            <div></div>
+          )}
         </div>
       </div>
 
@@ -312,6 +403,18 @@ const ModuleDetail = () => {
             >
               Discussion
             </button>
+            {module.projectRequired && (
+              <button
+                onClick={() => setActiveTab('projects')}
+                className={`px-4 py-2 font-medium transition-colors ${
+                  activeTab === 'projects'
+                    ? 'border-b-2 border-purple-600 text-purple-600 dark:text-purple-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                Projets
+              </button>
+            )}
           </div>
 
           {/* Lessons Tab */}
@@ -526,18 +629,70 @@ const ModuleDetail = () => {
                 <h2 className="section-subheader mb-0">Discussion</h2>
                 <button
                   onClick={() => navigate('/discussions')}
-                  className="btn-outline text-sm"
+                  className="btn-primary text-sm"
                 >
-                  Voir toutes les discussions
+                  + Nouveau Message
                 </button>
               </div>
-              <p className="text-gray-600 dark:text-gray-400">
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
                 Utilisez la page Discussions pour communiquer avec votre professeur ou l'administrateur à propos de ce module.
+              </p>
+              <Link
+                to="/discussions"
+                className="btn-outline inline-block"
+              >
+                Voir toutes les discussions
+              </Link>
+            </div>
+          )}
+
+          {/* Projects Tab */}
+          {activeTab === 'projects' && (
+            <div className="card">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="section-subheader mb-0">Projets</h2>
+                <Link
+                  to="/projects"
+                  className="btn-primary text-sm"
+                >
+                  Voir tous les projets
+                </Link>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400">
+                Les projets et études de cas pour ce module sont disponibles dans la section Projets.
               </p>
             </div>
           )}
         </div>
       </div>
+
+      {/* Approval Modal */}
+      {showApprovalModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+              Demander l'approbation
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Vous souhaitez accéder au module "{module.title}". Votre demande sera envoyée à votre professeur ou à l'administrateur.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleRequestApproval}
+                className="btn-primary"
+              >
+                Confirmer
+              </button>
+              <button
+                onClick={() => setShowApprovalModal(false)}
+                className="btn-secondary"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

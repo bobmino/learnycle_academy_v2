@@ -106,16 +106,25 @@ const Discussions = () => {
   if (id && currentDiscussion) {
     return (
       <div className="container-custom py-8">
+        <Breadcrumbs
+          items={[
+            { label: 'Dashboard', to: '/dashboard' },
+            { label: 'Discussions', to: '/discussions' },
+            { label: currentDiscussion.subject }
+          ]}
+        />
+        
         <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={() => navigate('/discussions')}
-            className="btn-secondary"
-          >
-            ← Retour
-          </button>
+          <BackButton to="/discussions" />
           <h1 className="section-header mb-0">
             {currentDiscussion.subject}
           </h1>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="btn-primary ml-auto"
+          >
+            + Nouveau Message
+          </button>
         </div>
 
         <div className="card mb-6">
@@ -182,16 +191,26 @@ const Discussions = () => {
   // Discussions list view
   return (
     <div className="container-custom py-8">
+      <Breadcrumbs
+        items={[
+          { label: 'Dashboard', to: '/dashboard' },
+          { label: 'Discussions' }
+        ]}
+      />
+      
       <div className="flex justify-between items-center mb-8">
-        <h1 className="section-header mb-0">
-          Discussions
-        </h1>
+        <div className="flex items-center gap-4">
+          <BackButton to="/dashboard" />
+          <h1 className="section-header mb-0">
+            Discussions
+          </h1>
+        </div>
         {getAvailableReceivers().length > 0 && (
           <button
             onClick={() => setShowCreateModal(true)}
             className="btn-primary"
           >
-            + Nouvelle Discussion
+            + Nouveau Message
           </button>
         )}
       </div>

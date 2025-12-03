@@ -9,14 +9,16 @@ const {
   logout,
   refreshToken,
   getMe,
-  createAdmin
+  createAdmin,
+  createTeacher
 } = require('../controllers/authController');
 
 // Public routes
 router.post('/register', authLimiter, validate(registerSchema), register);
 router.post('/login', authLimiter, validate(loginSchema), login);
 router.post('/refresh', refreshToken);
-router.post('/create-admin', createAdmin); // Create admin if doesn't exist (setup only)
+router.post('/create-admin', createAdmin);
+router.post('/create-teacher', createTeacher); // Create admin if doesn't exist (setup only)
 
 // Protected routes
 router.post('/logout', protect, logout);

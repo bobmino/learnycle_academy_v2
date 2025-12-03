@@ -1,6 +1,7 @@
 const Module = require('../models/Module');
 const Lesson = require('../models/Lesson');
 const ModuleOrder = require('../models/ModuleOrder');
+const ModuleApproval = require('../models/ModuleApproval');
 const User = require('../models/User');
 const Group = require('../models/Group');
 
@@ -39,6 +40,41 @@ const getModules = async (req, res) => {
       modules = await Module.find({}).sort({ order: 1 });
     }
 
+    // Filter by unlock mode and approval status
+    const filteredModules = [];
+    for (const module of modules) {
+      // Check if module is active
+      if (!module.isActive) continue;
+
+      // If unlockMode is 'auto', include it
+      if (module.unlockMode === 'auto') {
+        filteredModules.push(module);
+        continue;
+      }
+
+      // If unlockMode is 'approval', check approval status
+      if (module.unlockMode === 'approval' || module.approvalRequired) {
+        const approval = await ModuleApproval.findOne({
+          user: req.user._id,
+          module: module._id,
+          status: 'approved'
+        });
+
+        // Include if approved, or if student can preview (but not complete)
+        if (approval) {
+          filteredModules.push(module);
+        } else {
+          // Allow preview but mark as locked
+          const moduleObj = module.toObject();
+          moduleObj.isLocked = true;
+          moduleObj.requiresApproval = true;
+          filteredModules.push(moduleObj);
+        }
+      } else {
+        filteredModules.push(module);
+      }
+    }
+
     // Apply custom order if exists
     const moduleOrder = await ModuleOrder.findOne({ user: req.user._id });
     if (moduleOrder && moduleOrder.moduleOrder.length > 0) {
@@ -47,14 +83,14 @@ const getModules = async (req, res) => {
         orderMap.set(item.module.toString(), item.order);
       });
 
-      modules.sort((a, b) => {
+      filteredModules.sort((a, b) => {
         const orderA = orderMap.get(a._id.toString()) ?? a.order;
         const orderB = orderMap.get(b._id.toString()) ?? b.order;
         return orderA - orderB;
       });
     }
 
-    res.json(modules);
+    res.json(filteredModules);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -73,10 +109,57 @@ const getModuleById = async (req, res) => {
       return res.status(404).json({ message: 'Module not found' });
     }
 
+    // Check if module is active
+    if (!module.isActive && req.user.role !== 'admin' && req.user.role !== 'teacher') {
+      return res.status(403).json({ message: 'Module is not available' });
+    }
+
+    // Check approval if required
+    let isApproved = true;
+    let approvalStatus = null;
+    if (module.unlockMode === 'approval' || module.approvalRequired) {
+      const approval = await ModuleApproval.findOne({
+        user: req.user._id,
+        module: module._id
+      });
+      
+      if (approval) {
+        approvalStatus = approval.status;
+        isApproved = approval.status === 'approved';
+      } else {
+        approvalStatus = 'not-requested';
+        isApproved = false;
+      }
+    }
+
     // Get lessons for this module
     const lessons = await Lesson.find({ module: req.params.id }).sort({ order: 1 });
     
-    res.json({ module, lessons });
+    // Get previous and next modules
+    const allModules = await Module.find({ isActive: true }).sort({ order: 1 });
+    const currentIndex = allModules.findIndex(m => m._id.toString() === module._id.toString());
+    const previousModule = currentIndex > 0 ? allModules[currentIndex - 1] : null;
+    const nextModule = currentIndex < allModules.length - 1 ? allModules[currentIndex + 1] : null;
+
+    // Check if next module is accessible
+    let nextModuleAccessible = true;
+    if (nextModule && (nextModule.unlockMode === 'approval' || nextModule.approvalRequired)) {
+      const nextApproval = await ModuleApproval.findOne({
+        user: req.user._id,
+        module: nextModule._id,
+        status: 'approved'
+      });
+      nextModuleAccessible = !!nextApproval;
+    }
+
+    res.json({ 
+      module, 
+      lessons,
+      isApproved,
+      approvalStatus,
+      previousModule: previousModule ? { _id: previousModule._id, title: previousModule.title } : null,
+      nextModule: nextModule ? { _id: nextModule._id, title: nextModule.title, accessible: nextModuleAccessible } : null
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -91,11 +174,17 @@ const createModule = async (req, res) => {
   try {
     const { title, description, caseStudyType, order } = req.body;
 
+    const { unlockMode, approvalRequired, projectRequired, isActive } = req.body;
+
     const module = await Module.create({
       title,
       description,
       caseStudyType: caseStudyType || 'none',
-      order: order || 0
+      order: order || 0,
+      unlockMode: unlockMode || 'auto',
+      approvalRequired: approvalRequired || false,
+      projectRequired: projectRequired || false,
+      isActive: isActive !== undefined ? isActive : true
     });
 
     res.status(201).json(module);

@@ -116,6 +116,14 @@ const UserMenu = () => {
             {(user?.role === 'teacher' || user?.role === 'admin') && (
               <>
                 <Link
+                  to="/content-creator"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <span>✏️</span>
+                  <span>Créer du Contenu</span>
+                </Link>
+                <Link
                   to="/discussions"
                   onClick={() => setIsOpen(false)}
                   className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -124,27 +132,55 @@ const UserMenu = () => {
                   <span>Discussions</span>
                 </Link>
                 {user?.role === 'teacher' && (
-                  <Link
-                    to="/grading"
-                    onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <span>📝</span>
-                    <span>Notation</span>
-                  </Link>
+                  <>
+                    <Link
+                      to="/approvals"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <span>✅</span>
+                      <span>Approbations</span>
+                    </Link>
+                    <Link
+                      to="/grading"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <span>📝</span>
+                      <span>Notation</span>
+                    </Link>
+                  </>
                 )}
               </>
             )}
 
             {user?.role === 'student' && (
-              <Link
-                to="/discussions"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <span>💬</span>
-                <span>Discussions</span>
-              </Link>
+              <>
+                <Link
+                  to="/projects"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <span>📋</span>
+                  <span>Mes Projets</span>
+                </Link>
+                <Link
+                  to="/approvals"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <span>✅</span>
+                  <span>Mes Approbations</span>
+                </Link>
+                <Link
+                  to="/discussions"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <span>💬</span>
+                  <span>Discussions</span>
+                </Link>
+              </>
             )}
 
             <div className="border-t border-gray-200 dark:border-gray-700 my-2" />

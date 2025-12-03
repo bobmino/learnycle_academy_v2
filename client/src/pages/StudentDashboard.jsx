@@ -8,10 +8,12 @@ import {
   notificationService, 
   discussionService,
   groupService,
-  moduleServiceExtended
+  moduleServiceExtended,
+  projectService
 } from '../services/api';
 import ModuleCard from '../components/ModuleCard';
 import ProgressBar from '../components/ProgressBar';
+import { Link } from 'react-router-dom';
 
 /**
  * Student Dashboard
@@ -24,6 +26,7 @@ const StudentDashboard = () => {
   const [progress, setProgress] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [discussions, setDiscussions] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [displayMode, setDisplayMode] = useState('list'); // 'list' or 'assigned'
@@ -34,19 +37,21 @@ const StudentDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [modulesRes, progressRes, notificationsRes, discussionsRes] = await Promise.all([
+      const [modulesRes, progressRes, notificationsRes, discussionsRes, projectsRes] = await Promise.all([
         displayMode === 'assigned' 
           ? moduleServiceExtended.getAssigned()
           : moduleService.getAll(),
         progressService.getMy(),
         notificationService.getAll({ limit: 5 }),
-        discussionService.getAll()
+        discussionService.getAll(),
+        projectService.getMy()
       ]);
       
       setModules(modulesRes.data);
       setProgress(progressRes.data);
       setNotifications(notificationsRes.data);
       setDiscussions(discussionsRes.data);
+      setProjects(projectsRes.data);
 
       // Fetch group if user has one
       if (user?.groupId) {
@@ -267,6 +272,55 @@ const StudentDashboard = () => {
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {discussion.messages.length} message(s)
                     </p>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* My Projects */}
+          <div className="card">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Mes Projets
+              </h3>
+              <Link
+                to="/projects"
+                className="text-sm text-purple-600 dark:text-purple-400 hover:underline"
+              >
+                Voir tout
+              </Link>
+            </div>
+            {projects.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Aucun projet assigné
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {projects.slice(0, 3).map((project) => (
+                  <Link
+                    key={project._id}
+                    to={`/projects/${project._id}`}
+                    className="block p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-500 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg">
+                        {project.type === 'case-study' ? '📊' : project.type === 'exam' ? '📝' : '📋'}
+                      </span>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {project.name}
+                      </p>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {project.module?.title || 'Module'}
+                    </p>
+                    {project.submission && (
+                      <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                        {project.submission.status === 'approved' ? '✓ Approuvé' :
+                         project.submission.status === 'needs-revision' ? '⚠ Révision requise' :
+                         project.submission.status === 'submitted' ? '📤 Soumis' : 'Draft'}
+                      </p>
+                    )}
                   </Link>
                 ))}
               </div>

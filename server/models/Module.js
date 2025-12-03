@@ -29,6 +29,23 @@ const moduleSchema = new mongoose.Schema({
       ref: 'Group'
     }]
   },
+  projectRequired: {
+    type: Boolean,
+    default: false
+  },
+  approvalRequired: {
+    type: Boolean,
+    default: false
+  },
+  unlockMode: {
+    type: String,
+    enum: ['auto', 'approval'],
+    default: 'auto'
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
   createdAt: {
     type: Date,
     default: Date.now

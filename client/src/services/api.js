@@ -223,4 +223,25 @@ export const quizServiceExtended = {
   getAnalytics: (params) => API.get('/quiz/analytics', { params })
 };
 
+export const projectService = {
+  getAll: (params) => API.get('/projects', { params }),
+  getMy: () => API.get('/projects/my'),
+  getById: (id) => API.get(`/projects/${id}`),
+  create: (data) => API.post('/projects', data),
+  update: (id, data) => API.put(`/projects/${id}`, data),
+  delete: (id) => API.delete(`/projects/${id}`),
+  submit: (id, formData) => API.post(`/projects/${id}/submit`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  grade: (id, data) => API.post(`/projects/${id}/grade`, data)
+};
+
+export const approvalService = {
+  request: (moduleId) => API.post(`/approvals/request/${moduleId}`),
+  getPending: () => API.get('/approvals/pending'),
+  getMy: () => API.get('/approvals/my'),
+  approve: (id, comment) => API.post(`/approvals/${id}/approve`, { comment }),
+  reject: (id, comment) => API.post(`/approvals/${id}/reject`, { comment })
+};
+
 export default API;

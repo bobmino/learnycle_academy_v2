@@ -8,7 +8,8 @@ import {
   progressService,
   gradeService,
   quizServiceExtended,
-  moduleService
+  moduleService,
+  approvalService
 } from '../services/api';
 import ProgressBar from '../components/ProgressBar';
 import GradeDisplay from '../components/GradeDisplay';
@@ -25,6 +26,7 @@ const TeacherDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [students, setStudents] = useState([]);
   const [analytics, setAnalytics] = useState(null);
+  const [pendingApprovals, setPendingApprovals] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,13 +40,15 @@ const TeacherDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [groupsRes, notificationsRes] = await Promise.all([
+      const [groupsRes, notificationsRes, approvalsRes] = await Promise.all([
         groupService.getMy(),
-        notificationService.getAll({ limit: 10 })
+        notificationService.getAll({ limit: 10 }),
+        approvalService.getPending()
       ]);
 
       setGroups(groupsRes.data);
       setNotifications(notificationsRes.data);
+      setPendingApprovals(approvalsRes.data);
 
       // Get all students from groups
       const allStudents = [];
@@ -149,6 +153,15 @@ const TeacherDashboard = () => {
           </h3>
           <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
             {notifications.filter(n => !n.read).length}
+          </div>
+        </div>
+
+        <div className="dashboard-card">
+          <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
+            Approbations en Attente
+          </h3>
+          <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
+            {pendingApprovals.length}
           </div>
         </div>
 
@@ -306,6 +319,39 @@ const TeacherDashboard = () => {
             )}
           </div>
 
+          {/* Pending Approvals */}
+          {pendingApprovals.length > 0 && (
+            <div className="card">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Approbations en Attente
+                </h3>
+                <Link
+                  to="/approvals"
+                  className="text-sm text-purple-600 dark:text-purple-400 hover:underline"
+                >
+                  Voir tout ({pendingApprovals.length})
+                </Link>
+              </div>
+              <div className="space-y-3">
+                {pendingApprovals.slice(0, 3).map((approval) => (
+                  <Link
+                    key={approval._id}
+                    to="/approvals"
+                    className="block p-3 rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 hover:border-yellow-400 transition-colors"
+                  >
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {approval.module.title}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                      Par: {approval.user.name}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Quick Actions */}
           <div className="card">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -313,11 +359,11 @@ const TeacherDashboard = () => {
             </h3>
             <div className="space-y-2">
               <Link
-                to="/modules"
+                to="/content-creator"
                 className="block p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-500 transition-colors"
               >
                 <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  📚 Créer un Module
+                  ✏️ Créer du Contenu
                 </span>
               </Link>
               <Link
@@ -336,6 +382,16 @@ const TeacherDashboard = () => {
                   👥 Gérer les Groupes
                 </span>
               </Link>
+              {pendingApprovals.length > 0 && (
+                <Link
+                  to="/approvals"
+                  className="block p-3 rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 hover:border-yellow-400 transition-colors"
+                >
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    ✅ Approbations ({pendingApprovals.length})
+                  </span>
+                </Link>
+              )}
             </div>
           </div>
 

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { moduleService } from '../services/api';
+import { moduleService, quizService, projectService } from '../services/api';
+import Breadcrumbs from '../components/Breadcrumbs';
+import BackButton from '../components/BackButton';
 
 /**
  * Modules Page
@@ -10,18 +12,46 @@ import { moduleService } from '../services/api';
 const Modules = () => {
   const { t } = useTranslation();
   const [modules, setModules] = useState([]);
+  const [quizzes, setQuizzes] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('training'); // 'training', 'quiz', 'projects'
 
   useEffect(() => {
-    fetchModules();
-  }, []);
+    fetchData();
+  }, [activeTab]);
 
-  const fetchModules = async () => {
+  const fetchData = async () => {
     try {
-      const response = await moduleService.getAll();
-      setModules(response.data);
+      const [modulesRes] = await Promise.all([
+        moduleService.getAll()
+      ]);
+      setModules(modulesRes.data);
+
+      if (activeTab === 'quiz') {
+        // Fetch all quizzes grouped by module
+        const allQuizzes = [];
+        for (const module of modulesRes.data) {
+          try {
+            const quizzesRes = await quizService.getByModule(module._id);
+            allQuizzes.push(...quizzesRes.data.map(q => ({ ...q, moduleTitle: module.title, moduleId: module._id })));
+          } catch (error) {
+            console.error(`Failed to fetch quizzes for module ${module._id}:`, error);
+          }
+        }
+        setQuizzes(allQuizzes);
+      }
+
+      if (activeTab === 'projects') {
+        try {
+          const projectsRes = await projectService.getMy();
+          setProjects(projectsRes.data);
+        } catch (error) {
+          console.error('Failed to fetch projects:', error);
+        }
+      }
     } catch (error) {
-      console.error('Failed to fetch modules:', error);
+      console.error('Failed to fetch data:', error);
     } finally {
       setLoading(false);
     }
@@ -36,13 +66,64 @@ const Modules = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8 text-gray-900 dark:text-white">
-        {t('modules.title')}
-      </h1>
+    <div className="container-custom py-8">
+      <Breadcrumbs
+        items={[
+          { label: 'Dashboard', to: '/dashboard' },
+          { label: 'Modules' }
+        ]}
+      />
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {modules.map((module) => (
+      <div className="flex items-center gap-4 mb-8">
+        <BackButton to="/dashboard" />
+        <h1 className="section-header mb-0">
+          {t('modules.title')}
+        </h1>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
+        <button
+          onClick={() => setActiveTab('training')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === 'training'
+              ? 'border-b-2 border-purple-600 text-purple-600 dark:text-purple-400'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+          }`}
+        >
+          📚 Formations
+        </button>
+        <button
+          onClick={() => setActiveTab('quiz')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === 'quiz'
+              ? 'border-b-2 border-purple-600 text-purple-600 dark:text-purple-400'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+          }`}
+        >
+          🧪 Quiz/Tests
+        </button>
+        <button
+          onClick={() => setActiveTab('projects')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === 'projects'
+              ? 'border-b-2 border-purple-600 text-purple-600 dark:text-purple-400'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+          }`}
+        >
+          📋 Études de Cas/Projets
+        </button>
+      </div>
+
+      {/* Training Tab */}
+      {activeTab === 'training' && (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {modules.length === 0 ? (
+            <div className="col-span-full card text-center py-12">
+              <p className="text-gray-600 dark:text-gray-400">Aucun module disponible</p>
+            </div>
+          ) : (
+            modules.map((module) => (
           <Link
             key={module._id}
             to={`/modules/${module._id}`}

@@ -20,6 +20,10 @@ import Groups from './pages/Groups';
 import Notifications from './pages/Notifications';
 import Discussions from './pages/Discussions';
 import Grading from './pages/Grading';
+import Projects from './pages/Projects';
+import ProjectDetail from './pages/ProjectDetail';
+import Approvals from './pages/Approvals';
+import ContentCreator from './pages/ContentCreator';
 
 import './index.css';
 
@@ -126,6 +130,38 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Grading />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/projects"
+                element={
+                  <ProtectedRoute>
+                    <Projects />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/projects/:id"
+                element={
+                  <ProtectedRoute>
+                    <ProjectDetail />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/approvals"
+                element={
+                  <ProtectedRoute>
+                    <Approvals />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/content-creator"
+                element={
+                  <ProtectedRoute>
+                    <ContentCreator />
                   </ProtectedRoute>
                 }
               />

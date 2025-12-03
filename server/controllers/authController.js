@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const { generateAccessToken, generateRefreshToken } = require('../utils/jwt');
 
@@ -265,11 +266,61 @@ const createAdmin = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Create teacher user
+ * @route   POST /api/auth/create-teacher
+ * @access  Public (for initial setup)
+ */
+const createTeacher = async (req, res) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ message: 'Database not connected. Please try again in a moment.' });
+    }
+
+    const existingTeacher = await User.findOne({ email: 'teacher@learncycle.com' });
+    if (existingTeacher) {
+      return res.status(409).json({ 
+        message: 'Teacher user already exists.',
+        credentials: {
+          email: 'teacher@learncycle.com',
+          password: 'teacher123'
+        }
+      });
+    }
+
+    const teacherUser = await User.create({
+      name: 'Teacher User',
+      email: 'teacher@learncycle.com',
+      password: 'teacher123', // This will be hashed by pre-save hook
+      role: 'teacher'
+    });
+
+    res.status(201).json({
+      message: 'Teacher user created successfully',
+      user: {
+        _id: teacherUser._id,
+        name: teacherUser.name,
+        email: teacherUser.email,
+        role: teacherUser.role
+      },
+      credentials: {
+        email: 'teacher@learncycle.com',
+        password: 'teacher123',
+        note: 'Please change the password after first login!'
+      }
+    });
+  } catch (error) {
+    console.error('Error creating teacher user:', error);
+    res.status(500).json({ message: 'Failed to create teacher user', error: error.message });
+  }
+};
+
 module.exports = {
   register,
   login,
   logout,
   refreshToken,
   getMe,
-  createAdmin
+  createAdmin,
+  createTeacher
 };
