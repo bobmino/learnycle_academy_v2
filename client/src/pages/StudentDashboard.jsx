@@ -13,7 +13,6 @@ import {
 } from '../services/api';
 import ModuleCard from '../components/ModuleCard';
 import ProgressBar from '../components/ProgressBar';
-import { Link } from 'react-router-dom';
 
 /**
  * Student Dashboard
