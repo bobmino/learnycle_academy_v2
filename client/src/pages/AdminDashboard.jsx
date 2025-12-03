@@ -34,20 +34,36 @@ const AdminDashboard = () => {
 
   const fetchData = async () => {
     try {
+      setLoading(true);
       const [usersRes, prospectsRes, groupsRes, modulesRes, notificationsRes] = await Promise.all([
-        userService.getAll(),
-        prospectService.getAll(),
-        groupService.getAll(),
-        moduleService.getAll(),
-        notificationService.getAll({ limit: 10 })
+        userService.getAll().catch(err => {
+          console.error('Error fetching users:', err);
+          return { data: [] };
+        }),
+        prospectService.getAll().catch(err => {
+          console.error('Error fetching prospects:', err);
+          return { data: [] };
+        }),
+        groupService.getAll().catch(err => {
+          console.error('Error fetching groups:', err);
+          return { data: [] };
+        }),
+        moduleService.getAll().catch(err => {
+          console.error('Error fetching modules:', err);
+          return { data: [] };
+        }),
+        notificationService.getAll({ limit: 10 }).catch(err => {
+          console.error('Error fetching notifications:', err);
+          return { data: [] };
+        })
       ]);
-      setUsers(usersRes.data);
-      setProspects(prospectsRes.data);
-      setGroups(groupsRes.data);
-      setModules(modulesRes.data);
-      setNotifications(notificationsRes.data);
+      setUsers(usersRes.data || []);
+      setProspects(prospectsRes.data || []);
+      setGroups(groupsRes.data || []);
+      setModules(modulesRes.data || []);
+      setNotifications(notificationsRes.data || []);
 
-      // Fetch analytics
+      // Fetch analytics (with error handling)
       try {
         const [gradesRes, quizRes] = await Promise.all([
           gradeService.getAnalytics({}),
@@ -91,15 +107,18 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="relative">
+          <div className="h-12 w-12 border-4 border-purple-200 dark:border-purple-800 border-t-purple-600 dark:border-t-purple-400 rounded-full animate-spin"></div>
+          <div className="absolute top-0 left-0 h-12 w-12 border-4 border-transparent border-t-purple-400 dark:border-t-purple-500 rounded-full animate-spin" style={{ animation: 'spin 0.5s linear infinite reverse', opacity: 0.5 }}></div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8 text-gray-900 dark:text-white">
+    <div className="container-custom py-8">
+      <h1 className="section-header mb-8">
         {t('dashboard.admin')}
       </h1>
 

@@ -5,6 +5,7 @@ import store from './store/store';
 import i18n from './i18n/i18n';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Pages
 import Landing from './pages/Landing';
@@ -33,10 +34,11 @@ import './index.css';
  */
 function App() {
   return (
-    <Provider store={store}>
-      <I18nextProvider i18n={i18n}>
-        <Router>
-          <Routes>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <I18nextProvider i18n={i18n}>
+          <Router>
+            <Routes>
             {/* Public routes with layout */}
             <Route element={<MainLayout />}>
               <Route path="/" element={<Landing />} />
@@ -166,10 +168,11 @@ function App() {
                 }
               />
             </Route>
-          </Routes>
-        </Router>
-      </I18nextProvider>
-    </Provider>
+            </Routes>
+          </Router>
+        </I18nextProvider>
+      </Provider>
+    </ErrorBoundary>
   );
 }
 
