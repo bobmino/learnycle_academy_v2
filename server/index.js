@@ -114,6 +114,14 @@ app.use(async (req, res, next) => {
           global.adminChecked = true;
           await ensureAdminExists();
           await ensureTeacherExists();
+          
+          // Also initialize database with default data if needed
+          try {
+            const { initDatabase } = require('./utils/initDatabase');
+            await initDatabase();
+          } catch (initError) {
+            console.error('Error initializing database:', initError.message);
+          }
         }
       } catch (dbError) {
         console.error('❌ Failed to connect to MongoDB:', dbError.message);
