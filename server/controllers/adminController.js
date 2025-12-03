@@ -1,6 +1,7 @@
 const { initDatabase } = require('../utils/initDatabase');
 const { organizeFormation } = require('../utils/organizeFormation');
 const { reorganizeContent } = require('../utils/reorganizeContent');
+const { reorganizeContentSimple } = require('../utils/reorganizeContentSimple');
 
 /**
  * @desc    Initialize database with default data
@@ -61,21 +62,25 @@ const organizeFormationContent = async (req, res) => {
  */
 const reorganizeContentData = async (req, res) => {
   try {
-    console.log('🔄 Starting content reorganization...');
-    const result = await reorganizeContent();
+    console.log('🔄 Starting content reorganization (simple method)...');
+    // Use the simple reorganization method that just moves existing content
+    const result = await reorganizeContentSimple();
     
     if (result.success) {
       console.log('✅ Reorganization successful:', result.message);
       res.json({
         message: result.message,
         economyModule: result.economyModule,
-        caseStudies: result.caseStudies
+        lessonsMoved: result.lessonsMoved,
+        caseStudies: result.caseStudies,
+        caseStudyNames: result.caseStudyNames
       });
     } else {
       console.error('❌ Reorganization failed:', result.message, result.error);
       res.status(400).json({
         message: result.message || 'Error reorganizing content',
-        error: result.error || 'Unknown error'
+        error: result.error || 'Unknown error',
+        errorType: result.errorType
       });
     }
   } catch (error) {

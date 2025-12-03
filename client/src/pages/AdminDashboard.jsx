@@ -101,6 +101,7 @@ const AdminDashboard = () => {
       setReorganizeMessage(
         `✅ ${response.data.message}. ` +
         `Module Économie créé avec ${response.data.economyModule?.lessonsCount || 0} leçons. ` +
+        `${response.data.lessonsMoved || 0} leçons déplacées. ` +
         `${response.data.caseStudies || 0} études de cas créées.`
       );
       // Refresh after 3 seconds
