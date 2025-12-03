@@ -150,8 +150,86 @@ const Modules = () => {
               </span>
             )}
           </Link>
-        ))}
-      </div>
+            ))}
+        </div>
+      )}
+
+      {/* Quiz Tab */}
+      {activeTab === 'quiz' && (
+        <div className="space-y-6">
+          {quizzes.length === 0 ? (
+            <div className="card text-center py-12">
+              <p className="text-gray-600 dark:text-gray-400">Aucun quiz disponible</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {quizzes.map((quiz) => (
+                <Link
+                  key={quiz._id}
+                  to={`/modules/${quiz.moduleId}`}
+                  className="card-hover block"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                        {quiz.title}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Module: {quiz.moduleTitle}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                        {quiz.questions?.length || 0} question(s)
+                      </p>
+                    </div>
+                    <span className="text-2xl">→</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Projects Tab */}
+      {activeTab === 'projects' && (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {projects.length === 0 ? (
+            <div className="col-span-full card text-center py-12">
+              <p className="text-gray-600 dark:text-gray-400">Aucun projet disponible</p>
+            </div>
+          ) : (
+            projects.map((project) => (
+              <Link
+                key={project._id}
+                to={`/projects/${project._id}`}
+                className="card-hover"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-3xl">
+                      {project.type === 'case-study' ? '📊' : project.type === 'exam' ? '📝' : '📋'}
+                    </span>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                        {project.name}
+                      </h3>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                        {project.type}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                  {project.description}
+                </p>
+                <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                  Module: {project.module?.title || 'N/A'}
+                </div>
+              </Link>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -285,7 +285,6 @@ const submitProject = async (req, res) => {
     await submission.save();
 
     // Notify teacher/admin
-    const Group = require('../models/Group');
     if (user.groupId) {
       const group = await Group.findById(user.groupId).populate('teacher');
       if (group.teacher) {
