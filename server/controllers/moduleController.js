@@ -37,12 +37,18 @@ const getModules = async (req, res) => {
       const assignedModuleIds = [...new Set([...groupModuleIds, ...individualModuleIds])];
       const query = { _id: { $in: assignedModuleIds } };
       if (category) query.category = category;
-      modules = await Module.find(query).populate('category', 'name').sort({ order: 1 });
+      modules = await Module.find(query)
+        .populate('category', 'name')
+        .populate('createdBy', 'name email')
+        .sort({ order: 1 });
     } else {
       // Get all modules
       const query = {};
       if (category) query.category = category;
-      modules = await Module.find(query).populate('category', 'name').sort({ order: 1 });
+      modules = await Module.find(query)
+        .populate('category', 'name')
+        .populate('createdBy', 'name email')
+        .sort({ order: 1 });
     }
 
     // Filter by unlock mode and approval status

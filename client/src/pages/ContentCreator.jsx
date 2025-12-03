@@ -121,7 +121,7 @@ const ContentCreator = () => {
   const handleCreateModule = async (e) => {
     e.preventDefault();
     try {
-      const response = await moduleService.create({
+      const moduleData = {
         title: formData.title,
         description: formData.description,
         caseStudyType: formData.caseStudyType,
@@ -132,7 +132,14 @@ const ContentCreator = () => {
         isActive: formData.isActive,
         category: formData.moduleCategory,
         autoUnlockOnProjectValidation: formData.autoUnlockOnProjectValidation
-      });
+      };
+      
+      // If admin, add teacher assignment if selected
+      if (user?.role === 'admin' && formData.assignToTeacher) {
+        moduleData.assignToTeacher = formData.assignToTeacher;
+      }
+      
+      const response = await moduleService.create(moduleData);
       alert('Module créé avec succès');
       setFormData(prev => ({ ...prev, title: '', description: '', selectedModule: response.data._id }));
       fetchModules();
@@ -638,6 +645,26 @@ const ContentCreator = () => {
               label="Catégorie"
               className="mb-4"
             />
+            {user?.role === 'admin' && teachers.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Assigner à un Teacher (optionnel)
+                </label>
+                <select
+                  name="assignToTeacher"
+                  value={formData.assignToTeacher}
+                  onChange={handleInputChange}
+                  className="input-field"
+                >
+                  <option value="">Aucun (créé par admin)</option>
+                  {teachers.map(teacher => (
+                    <option key={teacher._id} value={teacher._id}>
+                      {teacher.name} ({teacher.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <button type="submit" className="btn-primary">
               Créer le Quiz
             </button>
@@ -745,10 +772,113 @@ const ContentCreator = () => {
               label="Catégorie"
               className="mb-4"
             />
+            {user?.role === 'admin' && teachers.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Assigner à un Teacher (optionnel)
+                </label>
+                <select
+                  name="assignToTeacher"
+                  value={formData.assignToTeacher}
+                  onChange={handleInputChange}
+                  className="input-field"
+                >
+                  <option value="">Aucun (créé par admin)</option>
+                  {teachers.map(teacher => (
+                    <option key={teacher._id} value={teacher._id}>
+                      {teacher.name} ({teacher.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <button type="submit" className="btn-primary" disabled={formData.projectModules.length === 0}>
               Créer le Projet
             </button>
           </form>
+        </div>
+      )}
+
+      {/* Content Management Tab */}
+      {activeTab === 'manage' && (
+        <div className="space-y-6">
+          {/* Modules List */}
+          <div className="card">
+            <h2 className="section-subheader mb-4">Modules Créés</h2>
+            {modules.length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400 text-center py-4">
+                Aucun module créé
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Titre</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Créé par</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Statut</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {modules.map((module) => (
+                      <tr key={module._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                          {module.title}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                          {module.createdBy?.name || 'Admin'} 
+                          {module.createdBy?.email && (
+                            <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">
+                              ({module.createdBy.email})
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            module.isActive
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                          }`}>
+                            {module.isActive ? 'Actif' : 'Inactif'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <button
+                            onClick={() => {
+                              // TODO: Implement edit functionality
+                              alert('Fonctionnalité d\'édition à venir');
+                            }}
+                            className="text-purple-600 dark:text-purple-400 hover:underline mr-3"
+                          >
+                            Modifier
+                          </button>
+                          {(user?.role === 'admin' || (module.createdBy && module.createdBy._id === user?._id)) && (
+                            <button
+                              onClick={async () => {
+                                if (window.confirm(`Voulez-vous ${module.isActive ? 'désactiver' : 'activer'} ce module ?`)) {
+                                  try {
+                                    await moduleService.update(module._id, { isActive: !module.isActive });
+                                    fetchModules();
+                                    alert('Module mis à jour');
+                                  } catch (error) {
+                                    alert('Erreur: ' + (error.response?.data?.message || error.message));
+                                  }
+                                }
+                              }}
+                              className="text-red-600 dark:text-red-400 hover:underline"
+                            >
+                              {module.isActive ? 'Désactiver' : 'Activer'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

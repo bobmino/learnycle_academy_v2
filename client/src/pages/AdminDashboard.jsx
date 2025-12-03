@@ -25,6 +25,8 @@ const AdminDashboard = () => {
   const [analytics, setAnalytics] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reorganizing, setReorganizing] = useState(false);
+  const [reorganizeMessage, setReorganizeMessage] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -81,6 +83,37 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleReorganizeContent = async () => {
+    if (!window.confirm(
+      '⚠️ ATTENTION : Cette action va réorganiser votre contenu.\n\n' +
+      'Les 10 modules existants seront convertis en leçons dans un module "Économie".\n' +
+      'Les études de cas seront créées comme projets.\n\n' +
+      'Voulez-vous continuer ?'
+    )) {
+      return;
+    }
+
+    setReorganizing(true);
+    setReorganizeMessage('');
+    
+    try {
+      const response = await adminService.reorganizeContent();
+      setReorganizeMessage(
+        `✅ ${response.data.message}. ` +
+        `Module Économie créé avec ${response.data.economyModule?.lessonsCount || 0} leçons. ` +
+        `${response.data.caseStudies || 0} études de cas créées.`
+      );
+      // Refresh after 3 seconds
+      setTimeout(() => {
+        window.location.reload();
+      }, 3000);
+    } catch (error) {
+      setReorganizeMessage(`❌ Erreur: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setReorganizing(false);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -98,6 +131,44 @@ const AdminDashboard = () => {
       <h1 className="section-header mb-8">
         {t('dashboard.admin')}
       </h1>
+
+      {/* Content Reorganization */}
+      <div className="card mb-8">
+        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+          Réorganisation du Contenu
+        </h2>
+        <div className="space-y-4">
+          <div>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              <strong>⚠️ Action importante :</strong> Ce script va réorganiser votre contenu existant :
+            </p>
+            <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4 space-y-2">
+              <li>Les 10 modules existants seront convertis en <strong>leçons</strong> dans un nouveau module "Économie"</li>
+              <li>Les études de cas (Café, Restaurant, Hôtel) seront créées comme <strong>projets</strong> numérotés</li>
+              <li>Une formation "Projet clé en main" sera créée/mise à jour avec le module Économie</li>
+            </ul>
+            <p className="text-sm text-amber-600 dark:text-amber-400 mb-4">
+              <strong>Note :</strong> Les anciens modules ne seront pas supprimés, mais ne seront plus utilisés dans la nouvelle structure.
+            </p>
+            <button
+              onClick={handleReorganizeContent}
+              disabled={reorganizing}
+              className="btn-primary"
+            >
+              {reorganizing ? 'Réorganisation en cours...' : 'Réorganiser le Contenu'}
+            </button>
+            {reorganizeMessage && (
+              <div className={`mt-4 p-3 rounded-lg ${
+                reorganizeMessage.includes('✅') 
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                  : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+              }`}>
+                {reorganizeMessage}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Stats Overview */}
       <div className="grid md:grid-cols-6 gap-4 mb-8">
@@ -236,23 +307,102 @@ const AdminDashboard = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {users.map((user) => (
-                <tr key={user._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{user.name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{user.email}</td>
+              {users.map((userItem) => (
+                <tr key={userItem._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                    {userItem.name}
+                    {userItem.isActive === false && (
+                      <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">(Suspendu)</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{userItem.email}</td>
                   <td className="px-4 py-3 text-sm">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      user.role === 'admin' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                      user.role === 'teacher' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                      userItem.role === 'admin' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                      userItem.role === 'teacher' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                       'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                     }`}>
-                      {user.role}
+                      {userItem.role}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    <button className="text-primary-600 dark:text-primary-400 hover:underline mr-2">
-                      {t('common.edit')}
-                    </button>
+                    <div className="flex gap-2">
+                      {user.role !== 'admin' && (
+                        <>
+                          {user.isActive !== false ? (
+                            <button
+                              onClick={async () => {
+                                if (window.confirm(`Voulez-vous suspendre l'utilisateur ${user.name} ?`)) {
+                                  try {
+                                    await userService.suspend(user._id, { reason: 'Suspendu par admin' });
+                                    fetchData();
+                                    alert('Utilisateur suspendu');
+                                  } catch (error) {
+                                    alert('Erreur: ' + (error.response?.data?.message || error.message));
+                                  }
+                                }
+                              }}
+                              className="text-amber-600 dark:text-amber-400 hover:underline"
+                            >
+                              Suspendre
+                            </button>
+                          ) : (
+                            <button
+                              onClick={async () => {
+                                if (window.confirm(`Voulez-vous activer l'utilisateur ${user.name} ?`)) {
+                                  try {
+                                    await userService.activate(user._id);
+                                    fetchData();
+                                    alert('Utilisateur activé');
+                                  } catch (error) {
+                                    alert('Erreur: ' + (error.response?.data?.message || error.message));
+                                  }
+                                }
+                              }}
+                              className="text-green-600 dark:text-green-400 hover:underline"
+                            >
+                              Activer
+                            </button>
+                          )}
+                        </>
+                      )}
+                      <button
+                        onClick={() => {
+                          const newRole = prompt(`Changer le rôle de ${user.name} (actuel: ${user.role})\nNouveau rôle (student/teacher/admin):`, user.role);
+                          if (newRole && ['student', 'teacher', 'admin'].includes(newRole.toLowerCase()) && newRole !== user.role) {
+                            userService.update(user._id, { role: newRole.toLowerCase() })
+                              .then(() => {
+                                fetchData();
+                                alert('Rôle mis à jour');
+                              })
+                              .catch(error => {
+                                alert('Erreur: ' + (error.response?.data?.message || error.message));
+                              });
+                          }
+                        }}
+                        className="text-purple-600 dark:text-purple-400 hover:underline"
+                      >
+                        Modifier
+                      </button>
+                      {user.role !== 'admin' && (
+                        <button
+                          onClick={async () => {
+                            if (window.confirm(`⚠️ ATTENTION: Voulez-vous vraiment supprimer l'utilisateur ${user.name} ?\nCette action est irréversible.`)) {
+                              try {
+                                await userService.delete(user._id);
+                                fetchData();
+                                alert('Utilisateur supprimé');
+                              } catch (error) {
+                                alert('Erreur: ' + (error.response?.data?.message || error.message));
+                              }
+                            }
+                          }}
+                          className="text-red-600 dark:text-red-400 hover:underline"
+                        >
+                          Supprimer
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -153,11 +153,15 @@ export const userService = {
   getAll: () => API.get('/users'),
   getById: (id) => API.get(`/users/${id}`),
   update: (id, userData) => API.put(`/users/${id}`, userData),
-  delete: (id) => API.delete(`/users/${id}`)
+  delete: (id) => API.delete(`/users/${id}`),
+  suspend: (id, data) => API.post(`/users/${id}/suspend`, data),
+  activate: (id) => API.post(`/users/${id}/activate`)
 };
 
 export const adminService = {
-  seedProfessional: () => API.post('/admin/seed-professional')
+  seedProfessional: () => API.post('/admin/seed-professional'),
+  initializeDatabase: () => API.post('/admin/init-database'),
+  reorganizeContent: () => API.post('/admin/reorganize-content')
 };
 
 export const groupService = {
