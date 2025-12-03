@@ -382,6 +382,14 @@ const TeacherDashboard = () => {
                   👥 Gérer les Groupes
                 </span>
               </Link>
+              <Link
+                to="/analytics"
+                className="block p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-500 transition-colors"
+              >
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  📊 Analytics
+                </span>
+              </Link>
               {pendingApprovals.length > 0 && (
                 <Link
                   to="/approvals"

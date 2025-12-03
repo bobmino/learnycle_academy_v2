@@ -25,6 +25,7 @@ import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
 import Approvals from './pages/Approvals';
 import ContentCreator from './pages/ContentCreator';
+import Analytics from './pages/Analytics';
 
 import './index.css';
 
@@ -164,6 +165,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <ContentCreator />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/analytics"
+                element={
+                  <ProtectedRoute>
+                    <Analytics />
                   </ProtectedRoute>
                 }
               />

@@ -228,7 +228,7 @@ const AdminDashboard = () => {
             </span>
           )}
         </Link>
-        <div className="card-hover">
+        <Link to="/analytics" className="card-hover">
           <div className="text-3xl mb-2">📊</div>
           <h3 className="font-semibold text-gray-900 dark:text-white">Analytics</h3>
           {analytics && (
@@ -236,7 +236,7 @@ const AdminDashboard = () => {
               Score moyen: {Math.round(analytics.grades?.average || 0)}%
             </p>
           )}
-        </div>
+        </Link>
       </div>
 
       {/* Groups Section */}

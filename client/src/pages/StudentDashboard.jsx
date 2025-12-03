@@ -9,10 +9,14 @@ import {
   discussionService,
   groupService,
   moduleServiceExtended,
-  projectService
+  projectService,
+  gradeService,
+  quizServiceExtended
 } from '../services/api';
 import ModuleCard from '../components/ModuleCard';
 import ProgressBar from '../components/ProgressBar';
+import LevelIndicator from '../components/LevelIndicator';
+import ProgressChart from '../components/ProgressChart';
 
 /**
  * Student Dashboard
@@ -29,6 +33,16 @@ const StudentDashboard = () => {
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [displayMode, setDisplayMode] = useState('list'); // 'list' or 'assigned'
+  const [grades, setGrades] = useState([]);
+  const [quizResults, setQuizResults] = useState([]);
+  const [stats, setStats] = useState({
+    level: 1,
+    overallProgress: 0,
+    averageGrade: 0,
+    averageQuizScore: 0,
+    totalLessonsCompleted: 0,
+    totalQuizzesCompleted: 0
+  });
 
   useEffect(() => {
     fetchData();
@@ -36,14 +50,16 @@ const StudentDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [modulesRes, progressRes, notificationsRes, discussionsRes, projectsRes] = await Promise.all([
+      const [modulesRes, progressRes, notificationsRes, discussionsRes, projectsRes, gradesRes, quizRes] = await Promise.all([
         displayMode === 'assigned' 
           ? moduleServiceExtended.getAssigned()
           : moduleService.getAll(),
         progressService.getMy(),
         notificationService.getAll({ limit: 5 }),
         discussionService.getAll(),
-        projectService.getMy()
+        projectService.getMy(),
+        gradeService.getStudentGrades(user?._id).catch(() => ({ data: [] })),
+        quizServiceExtended.getStudentResults(user?._id).catch(() => ({ data: { results: [] } }))
       ]);
       
       setModules(modulesRes.data);
@@ -51,6 +67,33 @@ const StudentDashboard = () => {
       setNotifications(notificationsRes.data);
       setDiscussions(discussionsRes.data);
       setProjects(projectsRes.data);
+      setGrades(gradesRes.data || []);
+      setQuizResults(quizRes.data?.results || []);
+
+      // Calculate statistics
+      const overallProgress = calculateOverallProgress();
+      const completedLessons = progressRes.data.filter(p => p.isCompleted).length;
+      const totalQuizzes = quizRes.data?.results?.length || 0;
+      
+      const avgGrade = gradesRes.data?.length > 0
+        ? gradesRes.data.reduce((sum, g) => sum + (g.grade || 0), 0) / gradesRes.data.length
+        : 0;
+      
+      const avgQuizScore = quizRes.data?.results?.length > 0
+        ? quizRes.data.results.reduce((sum, r) => sum + (r.score || 0), 0) / quizRes.data.results.length
+        : 0;
+
+      // Calculate level based on progress and scores
+      const level = calculateLevel(overallProgress, avgGrade, avgQuizScore);
+
+      setStats({
+        level,
+        overallProgress,
+        averageGrade: avgGrade,
+        averageQuizScore: avgQuizScore,
+        totalLessonsCompleted: completedLessons,
+        totalQuizzesCompleted: totalQuizzes
+      });
 
       // Fetch group if user has one
       if (user?.groupId) {
@@ -66,6 +109,22 @@ const StudentDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateLevel = (progress, avgGrade, avgQuizScore) => {
+    // Level calculation: based on progress (40%), average grade (30%), and quiz score (30%)
+    const progressScore = progress;
+    const gradeScore = avgGrade;
+    const quizScore = avgQuizScore;
+    const totalScore = (progressScore * 0.4) + (gradeScore * 0.3) + (quizScore * 0.3);
+    
+    // Level thresholds
+    if (totalScore >= 90) return 6; // Légende
+    if (totalScore >= 80) return 5; // Maître
+    if (totalScore >= 70) return 4; // Expert
+    if (totalScore >= 60) return 3; // Avancé
+    if (totalScore >= 40) return 2; // Intermédiaire
+    return 1; // Débutant
   };
 
   const calculateOverallProgress = () => {
@@ -102,45 +161,94 @@ const StudentDashboard = () => {
         )}
       </div>
 
-      {/* Progress Overview */}
-      <div className="grid md:grid-cols-4 gap-6 mb-8">
-        <div className="dashboard-card">
-          <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
-            Progression Globale
-          </h3>
-          <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">
-            {calculateOverallProgress()}%
-          </div>
-          <ProgressBar progress={calculateOverallProgress()} showLabel={false} size="sm" />
+      {/* Level and Progress Overview */}
+      <div className="grid md:grid-cols-5 gap-6 mb-8">
+        <div className="md:col-span-1">
+          <LevelIndicator
+            level={stats.level}
+            progress={stats.overallProgress}
+            title="Mon Niveau"
+            size={120}
+            showProgress={true}
+          />
         </div>
         
-        <div className="dashboard-card">
-          <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
-            Modules
-          </h3>
-          <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-            {modules.length}
+        <div className="md:col-span-4 grid grid-cols-4 gap-4">
+          <div className="dashboard-card">
+            <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
+              Progression Globale
+            </h3>
+            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">
+              {stats.overallProgress}%
+            </div>
+            <ProgressBar progress={stats.overallProgress} showLabel={false} size="sm" />
           </div>
-        </div>
-
-        <div className="dashboard-card">
-          <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
-            Leçons Complétées
-          </h3>
-          <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-            {progress.filter(p => p.isCompleted).length}
+          
+          <div className="dashboard-card">
+            <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
+              Note Moyenne
+            </h3>
+            <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+              {Math.round(stats.averageGrade)}%
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {grades.length} note{grades.length > 1 ? 's' : ''}
+            </p>
           </div>
-        </div>
 
-        <div className="dashboard-card">
-          <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
-            Notifications
-          </h3>
-          <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-            {notifications.filter(n => !n.read).length}
+          <div className="dashboard-card">
+            <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
+              Score Quiz Moyen
+            </h3>
+            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+              {Math.round(stats.averageQuizScore)}%
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {stats.totalQuizzesCompleted} quiz{stats.totalQuizzesCompleted > 1 ? 's' : ''}
+            </p>
+          </div>
+
+          <div className="dashboard-card">
+            <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
+              Leçons Complétées
+            </h3>
+            <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
+              {stats.totalLessonsCompleted}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              sur {progress.length} leçon{progress.length > 1 ? 's' : ''}
+            </p>
           </div>
         </div>
       </div>
+
+      {/* Progress Charts */}
+      {modules.length > 0 && (
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <ProgressChart
+            data={modules.slice(0, 8).map(module => ({
+              name: module.title,
+              value: getModuleProgress(module._id),
+              label: module.title.length > 20 ? module.title.substring(0, 20) + '...' : module.title
+            }))}
+            title="Progression par Module"
+            height={250}
+            color="#9333ea"
+          />
+          {grades.length > 0 && (
+            <ProgressChart
+              data={grades.slice(0, 8).map((grade, index) => ({
+                name: grade.module?.title || grade.lesson?.title || `Note ${index + 1}`,
+                value: grade.grade || 0,
+                label: (grade.module?.title || grade.lesson?.title || `Note ${index + 1}`).substring(0, 20)
+              }))}
+              title="Mes Notes Récentes"
+              height={250}
+              color="#10b981"
+            />
+          )}
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-6 mb-8">
         {/* Modules Section */}
