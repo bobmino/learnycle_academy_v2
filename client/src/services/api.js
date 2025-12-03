@@ -131,4 +131,8 @@ export const userService = {
   delete: (id) => API.delete(`/users/${id}`)
 };
 
+export const adminService = {
+  seedProfessional: () => API.post('/admin/seed-professional')
+};
+
 export default API;

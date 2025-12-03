@@ -98,6 +98,7 @@ app.use("/api/lessons", require("./routes/lessonRoutes"));
 app.use("/api/quiz", require("./routes/quizRoutes"));
 app.use("/api/prospects", require("./routes/prospectRoutes"));
 app.use("/api/progress", require("./routes/progressRoutes"));
+app.use("/api/admin", require("./routes/adminRoutes"));
 
 // Health check endpoint (accessible at /api/health)
 app.get("/api/health", async (req, res) => {

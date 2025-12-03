@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { userService, prospectService } from '../services/api';
+import { userService, prospectService, adminService } from '../services/api';
 
 /**
  * Admin Dashboard
@@ -11,6 +11,8 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [prospects, setProspects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
+  const [seedMessage, setSeedMessage] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -31,6 +33,28 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleSeedProfessional = async () => {
+    if (!window.confirm('Voulez-vous charger le contenu professionnel complet ? Cela créera 10 modules avec leurs leçons.')) {
+      return;
+    }
+
+    setSeeding(true);
+    setSeedMessage('');
+    
+    try {
+      const response = await adminService.seedProfessional();
+      setSeedMessage(`✅ ${response.data.message}. ${response.data.modules} modules et ${response.data.lessons} leçons créés.`);
+      // Refresh modules after seeding
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (error) {
+      setSeedMessage(`❌ Erreur: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -44,6 +68,36 @@ const AdminDashboard = () => {
       <h1 className="text-4xl font-bold mb-8 text-gray-900 dark:text-white">
         {t('dashboard.admin')}
       </h1>
+
+      {/* Content Management */}
+      <div className="card mb-8">
+        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+          Gestion du Contenu
+        </h2>
+        <div className="space-y-4">
+          <div>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Chargez le contenu professionnel complet (10 modules avec leurs leçons) pour les apprentis.
+            </p>
+            <button
+              onClick={handleSeedProfessional}
+              disabled={seeding}
+              className="btn-primary"
+            >
+              {seeding ? 'Chargement...' : 'Charger le Contenu Professionnel'}
+            </button>
+            {seedMessage && (
+              <div className={`mt-4 p-3 rounded-lg ${
+                seedMessage.includes('✅') 
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                  : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+              }`}>
+                {seedMessage}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Stats Overview */}
       <div className="grid md:grid-cols-4 gap-6 mb-8">
