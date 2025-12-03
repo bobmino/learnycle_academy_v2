@@ -45,10 +45,17 @@ const reorganizeContent = async () => {
       console.log('✅ Created category: Économie');
     }
 
-    // Get all existing modules (1-10) ordered by order
-    const existingModules = await Module.find({}).sort({ order: 1 }).limit(10);
+    // Get all existing modules (1-10) ordered by order, excluding case study modules
+    // Only get modules with caseStudyType === 'none' or null (real modules, not case studies)
+    const existingModules = await Module.find({
+      $or: [
+        { caseStudyType: { $exists: false } },
+        { caseStudyType: null },
+        { caseStudyType: 'none' }
+      ]
+    }).sort({ order: 1 }).limit(10);
     console.log(`📚 Found ${existingModules.length} modules to convert`);
-
+    
     if (existingModules.length === 0) {
       console.log('⚠️  No modules found to reorganize.');
       return { success: false, message: 'No modules found' };
@@ -260,8 +267,23 @@ const reorganizeContent = async () => {
       console.log('✅ Updated formation: Projet clé en main');
     }
 
-    // Optionally, archive or delete old modules
-    // For now, we'll just leave them but they won't be used
+    // Deactivate old modules that were converted to lessons
+    for (const oldModule of existingModules) {
+      oldModule.isActive = false;
+      await oldModule.save();
+      console.log(`ℹ️  Deactivated old module: ${oldModule.title}`);
+    }
+
+    // Also deactivate old case study modules (cafe, restaurant, hotel)
+    // These are now replaced by real projects
+    const oldCaseStudyModules = await Module.find({
+      caseStudyType: { $in: ['cafe', 'restaurant', 'hotel'] }
+    });
+    for (const oldCaseModule of oldCaseStudyModules) {
+      oldCaseModule.isActive = false;
+      await oldCaseModule.save();
+      console.log(`ℹ️  Deactivated old case study module: ${oldCaseModule.title}`);
+    }
 
     console.log('✅ Reorganization complete!');
     

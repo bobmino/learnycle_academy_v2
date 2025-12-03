@@ -326,15 +326,15 @@ const AdminDashboard = () => {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    <div className="flex gap-2">
-                      {user.role !== 'admin' && (
+                    <div className="flex gap-2 flex-wrap">
+                      {userItem.role !== 'admin' && (
                         <>
-                          {user.isActive !== false ? (
+                          {userItem.isActive !== false ? (
                             <button
                               onClick={async () => {
-                                if (window.confirm(`Voulez-vous suspendre l'utilisateur ${user.name} ?`)) {
+                                if (window.confirm(`Voulez-vous suspendre l'utilisateur ${userItem.name} ?`)) {
                                   try {
-                                    await userService.suspend(user._id, { reason: 'Suspendu par admin' });
+                                    await userService.suspend(userItem._id, { reason: 'Suspendu par admin' });
                                     fetchData();
                                     alert('Utilisateur suspendu');
                                   } catch (error) {
@@ -342,16 +342,16 @@ const AdminDashboard = () => {
                                   }
                                 }
                               }}
-                              className="text-amber-600 dark:text-amber-400 hover:underline"
+                              className="text-amber-600 dark:text-amber-400 hover:underline text-xs"
                             >
                               Suspendre
                             </button>
                           ) : (
                             <button
                               onClick={async () => {
-                                if (window.confirm(`Voulez-vous activer l'utilisateur ${user.name} ?`)) {
+                                if (window.confirm(`Voulez-vous activer l'utilisateur ${userItem.name} ?`)) {
                                   try {
-                                    await userService.activate(user._id);
+                                    await userService.activate(userItem._id);
                                     fetchData();
                                     alert('Utilisateur activé');
                                   } catch (error) {
@@ -359,7 +359,7 @@ const AdminDashboard = () => {
                                   }
                                 }
                               }}
-                              className="text-green-600 dark:text-green-400 hover:underline"
+                              className="text-green-600 dark:text-green-400 hover:underline text-xs"
                             >
                               Activer
                             </button>
@@ -368,9 +368,9 @@ const AdminDashboard = () => {
                       )}
                       <button
                         onClick={() => {
-                          const newRole = prompt(`Changer le rôle de ${user.name} (actuel: ${user.role})\nNouveau rôle (student/teacher/admin):`, user.role);
-                          if (newRole && ['student', 'teacher', 'admin'].includes(newRole.toLowerCase()) && newRole !== user.role) {
-                            userService.update(user._id, { role: newRole.toLowerCase() })
+                          const newRole = prompt(`Changer le rôle de ${userItem.name} (actuel: ${userItem.role})\nNouveau rôle (student/teacher/admin):`, userItem.role);
+                          if (newRole && ['student', 'teacher', 'admin'].includes(newRole.toLowerCase()) && newRole.toLowerCase() !== userItem.role) {
+                            userService.update(userItem._id, { role: newRole.toLowerCase() })
                               .then(() => {
                                 fetchData();
                                 alert('Rôle mis à jour');
@@ -380,16 +380,16 @@ const AdminDashboard = () => {
                               });
                           }
                         }}
-                        className="text-purple-600 dark:text-purple-400 hover:underline"
+                        className="text-purple-600 dark:text-purple-400 hover:underline text-xs"
                       >
                         Modifier
                       </button>
-                      {user.role !== 'admin' && (
+                      {userItem.role !== 'admin' && (
                         <button
                           onClick={async () => {
-                            if (window.confirm(`⚠️ ATTENTION: Voulez-vous vraiment supprimer l'utilisateur ${user.name} ?\nCette action est irréversible.`)) {
+                            if (window.confirm(`⚠️ ATTENTION: Voulez-vous vraiment supprimer l'utilisateur ${userItem.name} ?\nCette action est irréversible.`)) {
                               try {
-                                await userService.delete(user._id);
+                                await userService.delete(userItem._id);
                                 fetchData();
                                 alert('Utilisateur supprimé');
                               } catch (error) {
@@ -397,7 +397,7 @@ const AdminDashboard = () => {
                               }
                             }
                           }}
-                          className="text-red-600 dark:text-red-400 hover:underline"
+                          className="text-red-600 dark:text-red-400 hover:underline text-xs"
                         >
                           Supprimer
                         </button>

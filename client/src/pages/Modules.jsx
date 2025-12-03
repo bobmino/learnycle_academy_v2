@@ -51,6 +51,12 @@ const Modules = () => {
         );
       }
       
+      // Exclude modules with caseStudyType (these should be projects, not modules)
+      // Only show real modules (caseStudyType === 'none' or null)
+      filteredModules = filteredModules.filter(m => 
+        !m.caseStudyType || m.caseStudyType === 'none'
+      );
+      
       setModules(filteredModules);
 
       if (activeTab === 'quiz') {
@@ -73,7 +79,8 @@ const Modules = () => {
       if (activeTab === 'projects') {
         try {
           const params = selectedCategory ? { category: selectedCategory } : {};
-          const projectsRes = await projectService.getMy();
+          // Use getAll() to get all projects, not just assigned ones
+          const projectsRes = await projectService.getAll(params);
           let filteredProjects = projectsRes.data || [];
           
           // Filter by category if selected
@@ -83,9 +90,30 @@ const Modules = () => {
             );
           }
           
+          // Also include modules with caseStudyType as projects (for backward compatibility)
+          const caseStudyModules = modulesRes.data.filter(m => 
+            m.caseStudyType && m.caseStudyType !== 'none'
+          );
+          
+          // Convert case study modules to project-like objects
+          const caseStudyProjects = caseStudyModules.map(m => ({
+            _id: m._id,
+            name: m.title,
+            description: m.description,
+            type: 'case-study',
+            category: m.category,
+            modules: m._id ? [m._id] : [],
+            status: m.isActive ? 'active' : 'draft',
+            isModuleCaseStudy: true // Flag to identify converted modules
+          }));
+          
+          // Combine real projects with case study modules
+          filteredProjects = [...filteredProjects, ...caseStudyProjects];
+          
           setProjects(filteredProjects);
         } catch (error) {
           console.error('Failed to fetch projects:', error);
+          setProjects([]);
         }
       }
     } catch (error) {
@@ -313,36 +341,66 @@ const Modules = () => {
               )}
             </div>
           ) : (
-            projects.map((project, index) => (
-              <Link
-                key={project._id}
-                to={`/projects/${project._id}`}
-                className="card-hover hover-lift animate-fade-in"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-3xl">
-                      {project.type === 'case-study' ? '📊' : project.type === 'exam' ? '📝' : '📋'}
-                    </span>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
-                        {project.name}
-                      </h3>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                        {project.type}
-                      </span>
-                    </div>
+            projects.map((project, index) => {
+              // Determine icon based on project name or type
+              const getProjectIcon = () => {
+                const name = (project.name || '').toLowerCase();
+                if (name.includes('café') || name.includes('cafe')) return '☕';
+                if (name.includes('restaurant')) return '🍽️';
+                if (name.includes('hôtel') || name.includes('hotel')) return '🏨';
+                if (project.type === 'case-study') return '📊';
+                if (project.type === 'exam') return '📝';
+                return '📋';
+              };
+
+              // Determine route - if it's a converted module (old case study module), go to module detail
+              // Otherwise, go to project detail
+              const isModuleCaseStudy = project.isModuleCaseStudy || (project._id && !project.modules && project.type === 'case-study');
+              const projectRoute = isModuleCaseStudy 
+                ? `/modules/${project._id}` 
+                : `/projects/${project._id}`;
+
+              return (
+                <Link
+                  key={project._id}
+                  to={projectRoute}
+                  className="dashboard-card group hover-lift animate-fade-in"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <div className="mb-4">
+                    <span className="text-5xl">{getProjectIcon()}</span>
                   </div>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                  {project.description}
-                </p>
-                <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                  Module: {project.module?.title || 'N/A'}
-                </div>
-              </Link>
-            ))
+                  
+                  <h2 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                    {project.name}
+                  </h2>
+                  
+                  <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
+                    {project.description}
+                  </p>
+
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <span className="inline-block px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-sm font-medium">
+                      {project.type === 'case-study' ? 'Étude de Cas' : project.type === 'exam' ? 'Examen' : 'Projet'}
+                      {(project.name || '').includes('Café') && ' - cafe'}
+                      {(project.name || '').includes('Restaurant') && ' - restaurant'}
+                      {(project.name || '').includes('Hôtel') && ' - hotel'}
+                    </span>
+                    {project.category && (
+                      <span className="inline-block px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium">
+                        {project.category.name || project.category}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="mt-auto pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <span className="text-sm text-gray-500 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                      Commencer →
+                    </span>
+                  </div>
+                </Link>
+              );
+            })
           )}
         </div>
       )}
