@@ -1,18 +1,38 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { moduleService, lessonService, quizService, progressService } from '../services/api';
+import { useSelector } from 'react-redux';
+import { 
+  moduleService, 
+  lessonService, 
+  quizService, 
+  progressService,
+  gradeService,
+  discussionService
+} from '../services/api';
+import ProgressBar from '../components/ProgressBar';
+import GradeDisplay from '../components/GradeDisplay';
 
 /**
  * Module Detail Page
- * Shows lessons, quizzes, and allows marking progress
+ * Enhanced page with full lesson view, quizzes, grades, and discussions
  */
 const ModuleDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user } = useSelector((state) => state.auth);
   const [module, setModule] = useState(null);
   const [lessons, setLessons] = useState([]);
+  const [quizzes, setQuizzes] = useState([]);
+  const [progress, setProgress] = useState([]);
+  const [grades, setGrades] = useState([]);
+  const [currentLesson, setCurrentLesson] = useState(null);
+  const [currentQuiz, setCurrentQuiz] = useState(null);
+  const [quizAnswers, setQuizAnswers] = useState({});
+  const [quizResult, setQuizResult] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('lessons'); // 'lessons', 'quiz', 'discussion'
 
   useEffect(() => {
     fetchModuleData();
@@ -20,9 +40,34 @@ const ModuleDetail = () => {
 
   const fetchModuleData = async () => {
     try {
-      const response = await moduleService.getById(id);
-      setModule(response.data.module);
-      setLessons(response.data.lessons);
+      const [moduleRes, progressRes] = await Promise.all([
+        moduleService.getById(id),
+        progressService.getMy()
+      ]);
+      
+      setModule(moduleRes.data.module);
+      setLessons(moduleRes.data.lessons);
+      setProgress(progressRes.data);
+
+      // Fetch quizzes
+      try {
+        const quizzesRes = await quizService.getByModule(id);
+        setQuizzes(quizzesRes.data);
+      } catch (error) {
+        console.error('Failed to fetch quizzes:', error);
+      }
+
+      // Fetch grades for student
+      if (user?.role === 'student') {
+        try {
+          const gradesRes = await gradeService.getStudentGrades(user._id);
+          setGrades(gradesRes.data.grades.filter(g => 
+            g.module === id || g.lesson?.module === id
+          ));
+        } catch (error) {
+          console.error('Failed to fetch grades:', error);
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch module:', error);
     } finally {
@@ -30,92 +75,466 @@ const ModuleDetail = () => {
     }
   };
 
-  const markLessonComplete = async (lessonId) => {
+  const getLessonProgress = (lessonId) => {
+    const lessonProgress = progress.find(p => p.lesson?._id === lessonId || p.lesson === lessonId);
+    return lessonProgress?.isCompleted || false;
+  };
+
+  const getModuleProgress = () => {
+    if (lessons.length === 0) return 0;
+    const completed = lessons.filter(lesson => getLessonProgress(lesson._id)).length;
+    return Math.round((completed / lessons.length) * 100);
+  };
+
+  const getLessonGrade = (lessonId) => {
+    const grade = grades.find(g => g.lesson?._id === lessonId || g.lesson === lessonId);
+    return grade?.grade || null;
+  };
+
+  const markLessonComplete = async (lessonId, isComplete) => {
     try {
-      await progressService.markComplete(lessonId);
-      alert('Lesson marked as complete!');
+      if (isComplete) {
+        await progressService.markComplete(lessonId);
+      } else {
+        // Mark as incomplete - would need a new endpoint or update existing
+        // For now, we'll just refresh
+      }
+      await fetchModuleData();
     } catch (error) {
-      console.error('Failed to mark lesson complete:', error);
+      console.error('Failed to update lesson status:', error);
+      alert('Erreur lors de la mise à jour');
     }
+  };
+
+  const handleQuizAnswer = (questionIndex, answerIndex) => {
+    setQuizAnswers(prev => ({
+      ...prev,
+      [questionIndex]: answerIndex
+    }));
+  };
+
+  const submitQuiz = async (quizId) => {
+    try {
+      const answers = Object.values(quizAnswers);
+      const response = await quizService.submit(quizId, answers);
+      setQuizResult(response.data);
+      await fetchModuleData();
+    } catch (error) {
+      console.error('Failed to submit quiz:', error);
+      alert('Erreur lors de la soumission du quiz');
+    }
+  };
+
+  const openLesson = (lesson) => {
+    setCurrentLesson(lesson);
+    setActiveTab('lessons');
+  };
+
+  const openQuiz = (quiz) => {
+    setCurrentQuiz(quiz);
+    setQuizAnswers({});
+    setQuizResult(null);
+    setActiveTab('quiz');
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
       </div>
     );
   }
 
   if (!module) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Module not found</h1>
+      <div className="container-custom py-8">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Module non trouvé</h1>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="card mb-8">
-        <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">
-          {module.title}
-        </h1>
-        <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">
-          {module.description}
-        </p>
-        {module.caseStudyType !== 'none' && (
-          <span className="inline-block px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-sm font-medium">
-            {t('modules.caseStudies')}: {module.caseStudyType}
-          </span>
-        )}
+    <div className="container-custom py-8">
+      {/* Module Header */}
+      <div className="card mb-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1">
+            <h1 className="section-header mb-2">
+              {module.title}
+            </h1>
+            <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">
+              {module.description}
+            </p>
+            <div className="flex items-center gap-4">
+              {module.caseStudyType !== 'none' && (
+                <span className="badge-primary">
+                  {module.caseStudyType}
+                </span>
+              )}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  {lessons.length} leçon(s)
+                </span>
+                {quizzes.length > 0 && (
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                  • {quizzes.length} quiz
+                </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="btn-secondary"
+          >
+            ← Retour
+          </button>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="mt-4">
+          <ProgressBar progress={getModuleProgress()} />
+        </div>
       </div>
 
-      <div className="card">
-        <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
-          Lessons
-        </h2>
-        <div className="space-y-4">
-          {lessons.length === 0 ? (
-            <p className="text-gray-600 dark:text-gray-300">No lessons available yet.</p>
-          ) : (
-            lessons.map((lesson, index) => (
-              <div key={lesson._id} className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-500 transition-colors">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                        {index + 1}
+      <div className="grid lg:grid-cols-4 gap-6">
+        {/* Sidebar - Lessons & Quizzes List */}
+        <div className="lg:col-span-1">
+          <div className="card sticky top-4">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+              Contenu du Module
+            </h3>
+
+            {/* Lessons */}
+            <div className="mb-6">
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Leçons ({lessons.length})
+              </h4>
+              <div className="space-y-2">
+                {lessons.map((lesson, index) => {
+                  const isCompleted = getLessonProgress(lesson._id);
+                  const grade = getLessonGrade(lesson._id);
+                  return (
+                    <button
+                      key={lesson._id}
+                      onClick={() => openLesson(lesson)}
+                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                        currentLesson?._id === lesson._id
+                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                            {index + 1}.
+                          </span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {lesson.title}
+                          </span>
+                        </div>
+                        {isCompleted && (
+                          <span className="text-green-500">✓</span>
+                        )}
+                      </div>
+                      {grade !== null && (
+                        <div className="mt-1">
+                          <GradeDisplay grade={grade} showLabel={false} size="sm" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Quizzes */}
+            {quizzes.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Quiz ({quizzes.length})
+                </h4>
+                <div className="space-y-2">
+                  {quizzes.map((quiz) => (
+                    <button
+                      key={quiz._id}
+                      onClick={() => openQuiz(quiz)}
+                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                        currentQuiz?._id === quiz._id
+                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                      }`}
+                    >
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        {quiz.title}
                       </span>
-                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                        {lesson.title}
-                      </h3>
-                    </div>
-                    <div className="prose dark:prose-invert max-w-none">
-                      <p className="text-gray-600 dark:text-gray-300">
-                        {lesson.content.substring(0, 200)}...
-                      </p>
-                    </div>
-                    {lesson.pdfUrl && (
-                      <a
-                        href={`${import.meta.env.VITE_API_URL?.replace('/api', '')}${lesson.pdfUrl}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-block mt-3 text-primary-600 dark:text-primary-400 hover:underline"
-                      >
-                        📄 {t('modules.downloadPDF')}
-                      </a>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => markLessonComplete(lesson._id)}
-                    className="btn-primary ml-4"
-                  >
-                    Mark Complete
-                  </button>
+                    </button>
+                  ))}
                 </div>
               </div>
-            ))
+            )}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="lg:col-span-3">
+          {/* Tabs */}
+          <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setActiveTab('lessons')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === 'lessons'
+                  ? 'border-b-2 border-purple-600 text-purple-600 dark:text-purple-400'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              Leçons
+            </button>
+            {quizzes.length > 0 && (
+              <button
+                onClick={() => setActiveTab('quiz')}
+                className={`px-4 py-2 font-medium transition-colors ${
+                  activeTab === 'quiz'
+                    ? 'border-b-2 border-purple-600 text-purple-600 dark:text-purple-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                Quiz
+              </button>
+            )}
+            <button
+              onClick={() => setActiveTab('discussion')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === 'discussion'
+                  ? 'border-b-2 border-purple-600 text-purple-600 dark:text-purple-400'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              Discussion
+            </button>
+          </div>
+
+          {/* Lessons Tab */}
+          {activeTab === 'lessons' && (
+            <div className="space-y-6">
+              {currentLesson ? (
+                <div className="card">
+                  <div className="flex justify-between items-start mb-4">
+                    <h2 className="section-subheader mb-0">
+                      {currentLesson.title}
+                    </h2>
+                    <div className="flex gap-2">
+                      {getLessonProgress(currentLesson._id) ? (
+                        <button
+                          onClick={() => markLessonComplete(currentLesson._id, false)}
+                          className="btn-secondary text-sm"
+                        >
+                          Marquer incomplet
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => markLessonComplete(currentLesson._id, true)}
+                          className="btn-primary text-sm"
+                        >
+                          Marquer complet
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Lesson Content */}
+                  <div className="prose dark:prose-invert max-w-none mb-6">
+                    <div 
+                      className="markdown-content"
+                      dangerouslySetInnerHTML={{ 
+                        __html: currentLesson.content
+                          .replace(/#{3}\s(.+)/g, '<h3>$1</h3>')
+                          .replace(/#{2}\s(.+)/g, '<h2>$1</h2>')
+                          .replace(/#{1}\s(.+)/g, '<h1>$1</h1>')
+                          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                          .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                          .replace(/\n/g, '<br />')
+                      }}
+                    />
+                  </div>
+
+                  {/* PDF Download */}
+                  {currentLesson.pdfUrl && (
+                    <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                      <a
+                        href={`${import.meta.env.VITE_API_URL?.replace('/api', '')}${currentLesson.pdfUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-outline inline-flex items-center gap-2"
+                      >
+                        📄 Télécharger le PDF
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Grade Display */}
+                  {getLessonGrade(currentLesson._id) !== null && (
+                    <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Note du professeur:
+                      </h4>
+                      <GradeDisplay grade={getLessonGrade(currentLesson._id)} />
+                      {grades.find(g => g.lesson?._id === currentLesson._id || g.lesson === currentLesson._id)?.comment && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                          {grades.find(g => g.lesson?._id === currentLesson._id || g.lesson === currentLesson._id).comment}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Navigation */}
+                  <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-between">
+                    {lessons.findIndex(l => l._id === currentLesson._id) > 0 && (
+                      <button
+                        onClick={() => {
+                          const prevIndex = lessons.findIndex(l => l._id === currentLesson._id) - 1;
+                          openLesson(lessons[prevIndex]);
+                        }}
+                        className="btn-secondary"
+                      >
+                        ← Précédent
+                      </button>
+                    )}
+                    {lessons.findIndex(l => l._id === currentLesson._id) < lessons.length - 1 && (
+                      <button
+                        onClick={() => {
+                          const nextIndex = lessons.findIndex(l => l._id === currentLesson._id) + 1;
+                          openLesson(lessons[nextIndex]);
+                        }}
+                        className="btn-primary ml-auto"
+                      >
+                        Suivant →
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="card text-center py-12">
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Sélectionnez une leçon dans la liste pour commencer
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Quiz Tab */}
+          {activeTab === 'quiz' && (
+            <div className="space-y-6">
+              {currentQuiz ? (
+                <div className="card">
+                  <h2 className="section-subheader mb-6">
+                    {currentQuiz.title}
+                  </h2>
+
+                  {quizResult ? (
+                    <div className="space-y-4">
+                      <div className="p-6 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                        <h3 className="text-lg font-semibold mb-2">Résultats</h3>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Score</p>
+                            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                              {quizResult.score}%
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Réponses correctes</p>
+                            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                              {quizResult.correctAnswers}/{quizResult.totalQuestions}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Total</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                              {quizResult.totalQuestions}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setQuizResult(null);
+                          setQuizAnswers({});
+                        }}
+                        className="btn-primary"
+                      >
+                        Réessayer
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {currentQuiz.questions.map((question, qIndex) => (
+                        <div key={qIndex} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                          <h4 className="font-medium mb-3 text-gray-900 dark:text-white">
+                            {qIndex + 1}. {question.questionText}
+                          </h4>
+                          <div className="space-y-2">
+                            {question.options.map((option, oIndex) => (
+                              <label
+                                key={oIndex}
+                                className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${
+                                  quizAnswers[qIndex] === oIndex
+                                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                                    : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`question-${qIndex}`}
+                                  checked={quizAnswers[qIndex] === oIndex}
+                                  onChange={() => handleQuizAnswer(qIndex, oIndex)}
+                                  className="text-purple-600"
+                                />
+                                <span className="text-gray-900 dark:text-white">
+                                  {option.text}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => submitQuiz(currentQuiz._id)}
+                        disabled={Object.keys(quizAnswers).length !== currentQuiz.questions.length}
+                        className="btn-primary w-full"
+                      >
+                        Soumettre le Quiz
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="card text-center py-12">
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Sélectionnez un quiz dans la liste pour commencer
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Discussion Tab */}
+          {activeTab === 'discussion' && (
+            <div className="card">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="section-subheader mb-0">Discussion</h2>
+                <button
+                  onClick={() => navigate('/discussions')}
+                  className="btn-outline text-sm"
+                >
+                  Voir toutes les discussions
+                </button>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400">
+                Utilisez la page Discussions pour communiquer avec votre professeur ou l'administrateur à propos de ce module.
+              </p>
+            </div>
           )}
         </div>
       </div>

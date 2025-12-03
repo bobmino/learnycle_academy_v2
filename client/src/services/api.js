@@ -160,4 +160,67 @@ export const adminService = {
   seedProfessional: () => API.post('/admin/seed-professional')
 };
 
+export const groupService = {
+  getAll: (params) => API.get('/groups', { params }),
+  getMy: () => API.get('/groups/my'),
+  getById: (id) => API.get(`/groups/${id}`),
+  create: (data) => API.post('/groups', data),
+  update: (id, data) => API.put(`/groups/${id}`, data),
+  delete: (id) => API.delete(`/groups/${id}`),
+  addStudents: (id, studentIds) => API.post(`/groups/${id}/students`, { studentIds }),
+  removeStudent: (id, studentId) => API.delete(`/groups/${id}/students/${studentId}`),
+  assignModules: (id, moduleIds) => API.post(`/groups/${id}/modules`, { moduleIds })
+};
+
+export const notificationService = {
+  getAll: (params) => API.get('/notifications', { params }),
+  getUnread: () => API.get('/notifications/unread'),
+  markAsRead: (id) => API.put(`/notifications/${id}/read`),
+  markAllAsRead: () => API.put('/notifications/read-all'),
+  create: (data) => API.post('/notifications', data),
+  delete: (id) => API.delete(`/notifications/${id}`)
+};
+
+export const gradeService = {
+  create: (data) => API.post('/grades', data),
+  getStudentGrades: (studentId) => API.get(`/grades/student/${studentId}`),
+  getModuleGrades: (moduleId) => API.get(`/grades/module/${moduleId}`),
+  update: (id, data) => API.put(`/grades/${id}`, data),
+  getAnalytics: (params) => API.get('/grades/analytics', { params })
+};
+
+export const discussionService = {
+  getAll: () => API.get('/discussions'),
+  getById: (id) => API.get(`/discussions/${id}`),
+  create: (data) => API.post('/discussions', data),
+  sendMessage: (id, content) => API.post(`/discussions/${id}/messages`, { content }),
+  markAsRead: (id) => API.put(`/discussions/${id}/read`)
+};
+
+export const profileService = {
+  getMy: () => API.get('/profile/me'),
+  update: (data) => API.put('/profile/me', data),
+  updatePreferences: (data) => API.put('/profile/preferences', data),
+  uploadAvatar: (file) => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    return API.post('/profile/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  changePassword: (data) => API.put('/profile/password', data)
+};
+
+export const moduleServiceExtended = {
+  getAssigned: () => API.get('/modules/assigned'),
+  getMyOrder: () => API.get('/modules/my-order'),
+  reorder: (moduleOrder) => API.put('/modules/reorder', { moduleOrder })
+};
+
+export const quizServiceExtended = {
+  getResults: (params) => API.get('/quiz/results', { params }),
+  getStudentResults: (studentId) => API.get(`/quiz/results/student/${studentId}`),
+  getAnalytics: (params) => API.get('/quiz/analytics', { params })
+};
+
 export default API;

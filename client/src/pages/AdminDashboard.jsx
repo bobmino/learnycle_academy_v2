@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { userService, prospectService, adminService } from '../services/api';
+import { Link } from 'react-router-dom';
+import { 
+  userService, 
+  prospectService, 
+  adminService,
+  groupService,
+  moduleService,
+  gradeService,
+  quizServiceExtended,
+  notificationService
+} from '../services/api';
 
 /**
  * Admin Dashboard
@@ -10,6 +20,10 @@ const AdminDashboard = () => {
   const { t } = useTranslation();
   const [users, setUsers] = useState([]);
   const [prospects, setProspects] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [modules, setModules] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
   const [seedMessage, setSeedMessage] = useState('');
@@ -20,12 +34,32 @@ const AdminDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [usersRes, prospectsRes] = await Promise.all([
+      const [usersRes, prospectsRes, groupsRes, modulesRes, notificationsRes] = await Promise.all([
         userService.getAll(),
-        prospectService.getAll()
+        prospectService.getAll(),
+        groupService.getAll(),
+        moduleService.getAll(),
+        notificationService.getAll({ limit: 10 })
       ]);
       setUsers(usersRes.data);
       setProspects(prospectsRes.data);
+      setGroups(groupsRes.data);
+      setModules(modulesRes.data);
+      setNotifications(notificationsRes.data);
+
+      // Fetch analytics
+      try {
+        const [gradesRes, quizRes] = await Promise.all([
+          gradeService.getAnalytics({}),
+          quizServiceExtended.getAnalytics({})
+        ]);
+        setAnalytics({
+          grades: gradesRes.data,
+          quizzes: quizRes.data
+        });
+      } catch (error) {
+        console.error('Failed to fetch analytics:', error);
+      }
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -100,12 +134,12 @@ const AdminDashboard = () => {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid md:grid-cols-4 gap-6 mb-8">
+      <div className="grid md:grid-cols-6 gap-4 mb-8">
         <div className="dashboard-card">
           <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
             Total Users
           </h3>
-          <div className="text-3xl font-bold text-primary-600 dark:text-primary-400">
+          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
             {users.length}
           </div>
         </div>
@@ -114,7 +148,7 @@ const AdminDashboard = () => {
           <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
             Students
           </h3>
-          <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
             {users.filter(u => u.role === 'student').length}
           </div>
         </div>
@@ -123,8 +157,26 @@ const AdminDashboard = () => {
           <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
             Teachers
           </h3>
-          <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
             {users.filter(u => u.role === 'teacher').length}
+          </div>
+        </div>
+
+        <div className="dashboard-card">
+          <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
+            Groups
+          </h3>
+          <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+            {groups.length}
+          </div>
+        </div>
+
+        <div className="dashboard-card">
+          <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
+            Modules
+          </h3>
+          <div className="text-2xl font-bold text-pink-600 dark:text-pink-400">
+            {modules.length}
           </div>
         </div>
 
@@ -132,16 +184,80 @@ const AdminDashboard = () => {
           <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
             Prospects
           </h3>
-          <div className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
             {prospects.length}
           </div>
         </div>
       </div>
 
+      {/* Quick Actions */}
+      <div className="grid md:grid-cols-4 gap-4 mb-8">
+        <Link to="/groups" className="card-hover">
+          <div className="text-3xl mb-2">👥</div>
+          <h3 className="font-semibold text-gray-900 dark:text-white">Gérer les Groupes</h3>
+        </Link>
+        <Link to="/modules" className="card-hover">
+          <div className="text-3xl mb-2">📚</div>
+          <h3 className="font-semibold text-gray-900 dark:text-white">Gérer les Modules</h3>
+        </Link>
+        <Link to="/notifications" className="card-hover">
+          <div className="text-3xl mb-2">🔔</div>
+          <h3 className="font-semibold text-gray-900 dark:text-white">Notifications</h3>
+          {notifications.filter(n => !n.read).length > 0 && (
+            <span className="badge-primary mt-2">
+              {notifications.filter(n => !n.read).length} non lues
+            </span>
+          )}
+        </Link>
+        <div className="card-hover">
+          <div className="text-3xl mb-2">📊</div>
+          <h3 className="font-semibold text-gray-900 dark:text-white">Analytics</h3>
+          {analytics && (
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Score moyen: {Math.round(analytics.grades?.average || 0)}%
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Groups Section */}
+      <div className="card mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="section-subheader mb-0">
+            Groupes ({groups.length})
+          </h2>
+          <Link to="/groups" className="btn-primary">
+            Créer un Groupe
+          </Link>
+        </div>
+        {groups.length === 0 ? (
+          <p className="text-gray-600 dark:text-gray-400 text-center py-4">
+            Aucun groupe créé
+          </p>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-4">
+            {groups.slice(0, 6).map((group) => (
+              <Link
+                key={group._id}
+                to={`/groups/${group._id}`}
+                className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-purple-500 transition-colors"
+              >
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                  {group.name}
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {group.students?.length || 0} étudiant(s) • {group.modules?.length || 0} module(s)
+                </p>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Users Table */}
       <div className="card mb-8">
-        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-          Users Management
+        <h2 className="section-subheader mb-4">
+          Gestion des Utilisateurs
         </h2>
         <div className="overflow-x-auto">
           <table className="w-full">

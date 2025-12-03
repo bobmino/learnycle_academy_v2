@@ -15,6 +15,11 @@ import ProspectForm from './pages/ProspectForm';
 import Teamwork from './pages/Teamwork';
 import Modules from './pages/Modules';
 import ModuleDetail from './pages/ModuleDetail';
+import Profile from './pages/Profile';
+import Groups from './pages/Groups';
+import Notifications from './pages/Notifications';
+import Discussions from './pages/Discussions';
+import Grading from './pages/Grading';
 
 import './index.css';
 
@@ -65,6 +70,62 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Teamwork />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/groups"
+                element={
+                  <ProtectedRoute>
+                    <Groups />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/groups/:id"
+                element={
+                  <ProtectedRoute>
+                    <Groups />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notifications"
+                element={
+                  <ProtectedRoute>
+                    <Notifications />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/discussions"
+                element={
+                  <ProtectedRoute>
+                    <Discussions />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/discussions/:id"
+                element={
+                  <ProtectedRoute>
+                    <Discussions />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/grading"
+                element={
+                  <ProtectedRoute>
+                    <Grading />
                   </ProtectedRoute>
                 }
               />

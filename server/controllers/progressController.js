@@ -1,5 +1,6 @@
 const StudentProgress = require('../models/StudentProgress');
 const Lesson = require('../models/Lesson');
+const { createNotification, NOTIFICATION_TYPES } = require('../services/notificationService');
 
 /**
  * @desc    Get student progress
@@ -69,6 +70,25 @@ const markLessonComplete = async (req, res) => {
     }
 
     await progress.save();
+
+    // Notify teacher if lesson is completed
+    const User = require('../models/User');
+    const Group = require('../models/Group');
+    const user = await User.findById(req.user._id);
+    
+    if (user.groupId) {
+      const group = await Group.findById(user.groupId).populate('teacher');
+      if (group.teacher) {
+        await createNotification({
+          userId: group.teacher._id,
+          type: NOTIFICATION_TYPES.LESSON_COMPLETED,
+          title: 'Leçon complétée',
+          message: `${user.name} a complété la leçon "${lesson.title}"`,
+          relatedEntity: { entityType: 'lesson', entityId: lesson._id }
+        });
+      }
+    }
+
     res.json(progress);
   } catch (error) {
     res.status(500).json({ message: error.message });

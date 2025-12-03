@@ -1,14 +1,59 @@
 const Module = require('../models/Module');
 const Lesson = require('../models/Lesson');
+const ModuleOrder = require('../models/ModuleOrder');
+const User = require('../models/User');
+const Group = require('../models/Group');
 
 /**
- * @desc    Get all modules
+ * @desc    Get all modules (filtered by user preferences)
  * @route   GET /api/modules
  * @access  Private
  */
 const getModules = async (req, res) => {
   try {
-    const modules = await Module.find({}).sort({ order: 1 });
+    const user = await User.findById(req.user._id);
+    const displayMode = user.preferences?.moduleDisplayMode || 'list';
+
+    let modules;
+
+    if (displayMode === 'assigned') {
+      // Get assigned modules (from group or individual assignment)
+      const userGroup = user.groupId ? await Group.findById(user.groupId) : null;
+      const groupModuleIds = userGroup ? userGroup.modules : [];
+      const individualModuleIds = [];
+
+      // Find modules assigned to user individually
+      const allModules = await Module.find({});
+      allModules.forEach(module => {
+        if (module.assignedTo?.users?.includes(req.user._id) ||
+            module.assignedTo?.groups?.includes(user.groupId)) {
+          individualModuleIds.push(module._id);
+        }
+      });
+
+      // Combine group and individual assignments
+      const assignedModuleIds = [...new Set([...groupModuleIds, ...individualModuleIds])];
+      modules = await Module.find({ _id: { $in: assignedModuleIds } }).sort({ order: 1 });
+    } else {
+      // Get all modules
+      modules = await Module.find({}).sort({ order: 1 });
+    }
+
+    // Apply custom order if exists
+    const moduleOrder = await ModuleOrder.findOne({ user: req.user._id });
+    if (moduleOrder && moduleOrder.moduleOrder.length > 0) {
+      const orderMap = new Map();
+      moduleOrder.moduleOrder.forEach(item => {
+        orderMap.set(item.module.toString(), item.order);
+      });
+
+      modules.sort((a, b) => {
+        const orderA = orderMap.get(a._id.toString()) ?? a.order;
+        const orderB = orderMap.get(b._id.toString()) ?? b.order;
+        return orderA - orderB;
+      });
+    }
+
     res.json(modules);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -107,9 +152,104 @@ const deleteModule = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Get assigned modules for user
+ * @route   GET /api/modules/assigned
+ * @access  Private
+ */
+const getAssignedModules = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const userGroup = user.groupId ? await Group.findById(user.groupId) : null;
+    const groupModuleIds = userGroup ? userGroup.modules : [];
+    const individualModuleIds = [];
+
+    // Find modules assigned to user individually
+    const allModules = await Module.find({});
+    allModules.forEach(module => {
+      if (module.assignedTo?.users?.includes(req.user._id) ||
+          (user.groupId && module.assignedTo?.groups?.includes(user.groupId))) {
+        individualModuleIds.push(module._id);
+      }
+    });
+
+    // Combine group and individual assignments
+    const assignedModuleIds = [...new Set([...groupModuleIds, ...individualModuleIds])];
+    const modules = await Module.find({ _id: { $in: assignedModuleIds } }).sort({ order: 1 });
+
+    res.json(modules);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Get user's custom module order
+ * @route   GET /api/modules/my-order
+ * @access  Private
+ */
+const getMyOrder = async (req, res) => {
+  try {
+    const moduleOrder = await ModuleOrder.findOne({ user: req.user._id })
+      .populate('moduleOrder.module', 'title description');
+
+    if (!moduleOrder) {
+      return res.json({ moduleOrder: [] });
+    }
+
+    res.json(moduleOrder);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Reorder modules for user
+ * @route   PUT /api/modules/reorder
+ * @access  Private
+ */
+const reorderModules = async (req, res) => {
+  try {
+    const { moduleOrder } = req.body;
+
+    if (!Array.isArray(moduleOrder)) {
+      return res.status(400).json({ message: 'moduleOrder must be an array' });
+    }
+
+    // Validate module IDs exist
+    const moduleIds = moduleOrder.map(item => item.module);
+    const modules = await Module.find({ _id: { $in: moduleIds } });
+    if (modules.length !== moduleIds.length) {
+      return res.status(400).json({ message: 'Some module IDs are invalid' });
+    }
+
+    // Update or create module order
+    let userOrder = await ModuleOrder.findOne({ user: req.user._id });
+
+    if (userOrder) {
+      userOrder.moduleOrder = moduleOrder;
+      userOrder.updatedAt = Date.now();
+      await userOrder.save();
+    } else {
+      userOrder = await ModuleOrder.create({
+        user: req.user._id,
+        moduleOrder
+      });
+    }
+
+    await userOrder.populate('moduleOrder.module', 'title description');
+    res.json(userOrder);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getModules,
   getModuleById,
+  getAssignedModules,
+  getMyOrder,
+  reorderModules,
   createModule,
   updateModule,
   deleteModule

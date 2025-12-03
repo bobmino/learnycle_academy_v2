@@ -354,3 +354,243 @@ All requested features have been successfully implemented:
 ✅ Clean, commented code
 ✅ Comprehensive documentation
 The application is production-ready and can be deployed to Vercel (frontend) and Render (backend) with MongoDB Atlas.
+
+Plan d'Implémentation - LMS Complet
+Phase 1: Modèles de Données et Backend
+1.1 Nouveaux Modèles MongoDB
+Group Model (server/models/Group.js)
+name, description, teacher (optional), students (array), modules (assigned modules)
+createdAt, updatedAt
+Notification Model (server/models/Notification.js)
+user, type, title, message, read, relatedEntity (module/lesson/group), createdAt
+Grade Model (server/models/Grade.js)
+user, module/lesson/quiz, grade (0-100), comment, gradedBy (teacher), createdAt
+Discussion Model (server/models/Discussion.js)
+sender, receiver, subject, messages (array), relatedTo (module/lesson), createdAt
+UserProfile Model (extension de User)
+avatar, bio, preferences (module display mode), notificationSettings
+1.2 Modèles Existants à Étendre
+User Model : Ajouter groupId, preferences.moduleDisplayMode (list/assigned)
+Module Model : Ajouter assignedTo (users/groups), displayOrder (per user)
+StudentProgress Model : Ajouter grade, teacherComment, lastAccessed
+Phase 2: Backend API - Routes et Contrôleurs
+2.1 Routes de Groupes (server/routes/groupRoutes.js)
+POST /api/groups - Créer groupe (admin/teacher)
+GET /api/groups - Lister groupes (avec filtres)
+GET /api/groups/:id - Détails groupe
+PUT /api/groups/:id - Modifier groupe
+POST /api/groups/:id/students - Ajouter étudiants
+DELETE /api/groups/:id/students/:studentId - Retirer étudiant
+POST /api/groups/:id/modules - Assigner modules au groupe
+GET /api/groups/my - Mes groupes (student/teacher)
+2.2 Routes de Notifications (server/routes/notificationRoutes.js)
+GET /api/notifications - Mes notifications (filtrées par rôle)
+GET /api/notifications/unread - Notifications non lues
+PUT /api/notifications/:id/read - Marquer comme lu
+PUT /api/notifications/read-all - Tout marquer comme lu
+POST /api/notifications - Créer notification (admin/teacher)
+2.3 Routes de Notation (server/routes/gradeRoutes.js)
+POST /api/grades - Noter un travail (teacher)
+GET /api/grades/student/:studentId - Notes d'un étudiant
+GET /api/grades/module/:moduleId - Notes d'un module
+PUT /api/grades/:id - Modifier une note
+GET /api/grades/analytics - Analytics (teacher/admin)
+2.4 Routes de Discussion (server/routes/discussionRoutes.js)
+POST /api/discussions - Créer discussion (student vers teacher/admin)
+GET /api/discussions - Mes discussions
+GET /api/discussions/:id - Détails discussion
+POST /api/discussions/:id/messages - Envoyer message
+PUT /api/discussions/:id/read - Marquer comme lu
+2.5 Routes de Profil (server/routes/profileRoutes.js)
+GET /api/profile/me - Mon profil
+PUT /api/profile/me - Modifier profil
+PUT /api/profile/preferences - Modifier préférences
+POST /api/profile/avatar - Upload avatar
+2.6 Routes de Modules Étendues
+GET /api/modules/assigned - Modules assignés à l'utilisateur
+GET /api/modules/my-order - Ordre personnalisé des modules
+PUT /api/modules/reorder - Réorganiser l'ordre
+2.7 Routes de Quiz Améliorées
+GET /api/quiz/results - Résultats des quiz (avec analytics)
+GET /api/quiz/results/student/:studentId - Résultats d'un étudiant
+GET /api/quiz/analytics - Analytics globales (teacher/admin)
+Phase 3: Frontend - Composants et Pages
+3.1 Page Profil Utilisateur (client/src/pages/Profile.jsx)
+Informations personnelles (nom, email, bio)
+Upload avatar
+Préférences (mode d'affichage modules: list/assigned)
+Paramètres de notifications
+Changement de mot de passe
+Historique des activités
+3.2 Menu Utilisateur Amélioré (client/src/components/UserMenu.jsx)
+Avatar + nom
+Dropdown avec: Profil, Paramètres, Notifications, Déconnexion
+Badge de notifications non lues
+3.3 Dashboard Étudiant Amélioré (client/src/pages/StudentDashboard.jsx)
+Vue d'ensemble avec statistiques détaillées
+Modules assignés vs tous les modules (toggle)
+Progression par module avec graphiques
+Notifications récentes
+Discussions actives
+Prochaines échéances
+3.4 Page Module Détail Améliorée (client/src/pages/ModuleDetail.jsx)
+Vue leçon complète avec navigation
+Barre de progression
+Quiz intégré dans la page
+Notes et commentaires du professeur
+Discussion liée au module
+Boutons: Marquer complet/incomplet, Prendre notes
+3.5 Dashboard Professeur (client/src/pages/TeacherDashboard.jsx)
+Vue d'ensemble des groupes assignés
+Progression des étudiants (tableau)
+Notifications (étudiants qui ont terminé/avancé)
+Analytics (scores moyens, taux de complétion)
+Actions rapides (créer module, noter, commenter)
+3.6 Dashboard Admin Amélioré (client/src/pages/AdminDashboard.jsx)
+Gestion des groupes (CRUD)
+Assignation modules aux groupes/étudiants
+Analytics globales
+Gestion des notifications système
+Toutes les fonctionnalités existantes
+3.7 Page Gestion des Groupes (client/src/pages/Groups.jsx)
+Liste des groupes
+Créer/Modifier groupe
+Ajouter/Retirer étudiants
+Assigner modules au groupe
+Vue d'ensemble du groupe (progression, notes moyennes)
+3.8 Page Notifications (client/src/pages/Notifications.jsx)
+Liste des notifications (filtrées par type)
+Marquer comme lu/tout lire
+Filtres (non lues, par type, par date)
+Badge de compteur
+3.9 Page Discussions (client/src/pages/Discussions.jsx)
+Liste des discussions (étudiant/teacher/admin)
+Créer nouvelle discussion
+Interface de chat simple
+Discussions liées aux modules/leçons
+3.10 Page Notation (client/src/pages/Grading.jsx)
+Liste des travaux à noter (teacher)
+Formulaire de notation (0-100) + commentaire
+Historique des notes
+Analytics par étudiant/groupe
+3.11 Page Quiz Améliorée (client/src/pages/Quiz.jsx)
+Interface de quiz améliorée
+Résultats détaillés avec corrections
+Historique des tentatives
+Analytics pour teacher/admin
+3.12 Composants Réutilisables
+NotificationBadge.jsx - Badge de notifications
+ProgressBar.jsx - Barre de progression améliorée
+GradeDisplay.jsx - Affichage des notes
+DiscussionThread.jsx - Thread de discussion
+ModuleCard.jsx - Carte module avec progression
+StudentCard.jsx - Carte étudiant avec stats
+Phase 4: Système de Notifications
+4.1 Service de Notifications (server/services/notificationService.js)
+Créer notification (helper function)
+Types de notifications:
+module_assigned - Nouveau module assigné
+lesson_completed - Leçon complétée (pour teacher)
+quiz_submitted - Quiz soumis (pour teacher)
+grade_received - Note reçue (pour student)
+group_updated - Groupe modifié
+discussion_new - Nouveau message discussion
+4.2 Intégration dans les Contrôleurs
+Notifier lors de: assignation module, complétion leçon, soumission quiz, notation, etc.
+4.3 Frontend - Real-time (optionnel)
+Polling toutes les 30s pour nouvelles notifications
+Ou WebSocket pour temps réel (phase future)
+Phase 5: Système de Groupes
+5.1 Logique d'Assignation
+Un étudiant = un groupe maximum
+Groupes peuvent avoir 0 ou 1 professeur
+Modules assignés au groupe = visibles par tous les étudiants du groupe
+Modules assignés individuellement = override groupe
+5.2 Affichage des Modules
+Mode "List" : Tous les modules visibles, ordre par défaut
+Mode "Assigned" : Seulement modules assignés (groupe + individuel)
+Ordre personnalisable par étudiant (drag & drop)
+Phase 6: Système de Notation
+6.1 Notation des Quiz
+Score automatique (0-100) déjà calculé
+Professeur peut ajouter commentaire
+Historique des tentatives
+6.2 Notation des Leçons/Projets
+Professeur note manuellement (0-100)
+Commentaire obligatoire
+Notification à l'étudiant
+6.3 Analytics
+Moyenne par étudiant
+Moyenne par groupe
+Moyenne par module
+Graphiques de progression
+Phase 7: Système de Discussion
+7.1 Hiérarchie
+Student → Teacher (groupe)
+Student → Admin
+Teacher → Admin
+Pas de Student → Student (sauf si même groupe, optionnel)
+7.2 Interface
+Liste des discussions
+Chat simple (messages texte)
+Liens vers modules/leçons concernés
+Notifications pour nouveaux messages
+Phase 8: Améliorations UX/UI
+8.1 Navigation
+Menu utilisateur avec avatar
+Badge notifications partout
+Breadcrumbs pour navigation
+Sidebar pour dashboard (optionnel)
+8.2 Responsive
+Mobile-first pour toutes les nouvelles pages
+Tables scrollables sur mobile
+Cards adaptatives
+8.3 Accessibilité
+ARIA labels
+Navigation clavier
+Contraste couleurs
+Fichiers Principaux à Modifier/Créer
+Backend
+server/models/Group.js (nouveau)
+server/models/Notification.js (nouveau)
+server/models/Grade.js (nouveau)
+server/models/Discussion.js (nouveau)
+server/models/User.js (modifier)
+server/models/Module.js (modifier)
+server/routes/groupRoutes.js (nouveau)
+server/routes/notificationRoutes.js (nouveau)
+server/routes/gradeRoutes.js (nouveau)
+server/routes/discussionRoutes.js (nouveau)
+server/routes/profileRoutes.js (nouveau)
+server/controllers/groupController.js (nouveau)
+server/controllers/notificationController.js (nouveau)
+server/controllers/gradeController.js (nouveau)
+server/controllers/discussionController.js (nouveau)
+server/controllers/profileController.js (nouveau)
+server/services/notificationService.js (nouveau)
+server/index.js (ajouter routes)
+Frontend
+client/src/pages/Profile.jsx (nouveau)
+client/src/pages/Groups.jsx (nouveau)
+client/src/pages/Notifications.jsx (nouveau)
+client/src/pages/Discussions.jsx (nouveau)
+client/src/pages/Grading.jsx (nouveau)
+client/src/components/UserMenu.jsx (nouveau)
+client/src/components/NotificationBadge.jsx (nouveau)
+client/src/pages/StudentDashboard.jsx (refonte)
+client/src/pages/TeacherDashboard.jsx (refonte)
+client/src/pages/AdminDashboard.jsx (améliorer)
+client/src/pages/ModuleDetail.jsx (améliorer)
+client/src/pages/Quiz.jsx (améliorer)
+client/src/services/api.js (ajouter services)
+client/src/store/ (ajouter slices Redux si nécessaire)
+client/src/App.jsx (ajouter routes)
+Ordre d'Implémentation Recommandé
+Modèles et Backend API (Phase 1-2) - Fondations
+Système de Groupes (Phase 5) - Base pour le reste
+Profil Utilisateur (Phase 3.1-3.2) - UX de base
+Notifications (Phase 4) - Communication
+Amélioration Dashboards (Phase 3.3-3.6) - Expérience principale
+Système de Notation (Phase 6) - Évaluation
+Discussions (Phase 7) - Communication avancée
+Améliorations UX (Phase 8) - Polish final

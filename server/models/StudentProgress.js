@@ -22,6 +22,21 @@ const studentProgressSchema = new mongoose.Schema({
     type: Number, // Percentage or raw score
     default: null
   },
+  grade: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: null
+  },
+  teacherComment: {
+    type: String,
+    trim: true,
+    default: null
+  },
+  lastAccessed: {
+    type: Date,
+    default: Date.now
+  },
   completedAt: {
     type: Date,
     default: Date.now

@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useSelector, useDispatch } from 'react-redux';
-import { logout } from '../store/authSlice';
+import { useSelector } from 'react-redux';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeToggle from './ThemeToggle';
+import UserMenu from './UserMenu';
 
 /**
  * Navbar Component
@@ -11,12 +11,7 @@ import ThemeToggle from './ThemeToggle';
  */
 const Navbar = () => {
   const { t } = useTranslation();
-  const { isAuthenticated, user } = useSelector((state) => state.auth);
-  const dispatch = useDispatch();
-
-  const handleLogout = () => {
-    dispatch(logout());
-  };
+  const { isAuthenticated } = useSelector((state) => state.auth);
 
   return (
     <nav className="bg-white dark:bg-gray-800 shadow-md">
@@ -56,17 +51,7 @@ const Navbar = () => {
             <LanguageSwitcher />
             
             {isAuthenticated ? (
-              <div className="flex items-center gap-4">
-                <span className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300">
-                  {user?.name}
-                </span>
-                <button
-                  onClick={handleLogout}
-                  className="btn-secondary"
-                >
-                  {t('nav.logout')}
-                </button>
-              </div>
+              <UserMenu />
             ) : (
               <div className="flex items-center gap-2">
                 <Link to="/login" className="btn-secondary">

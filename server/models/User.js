@@ -26,6 +26,37 @@ const userSchema = new mongoose.Schema({
     enum: ['student', 'teacher', 'admin', 'prospect'],
     default: 'student'
   },
+  groupId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Group',
+    default: null
+  },
+  avatar: {
+    type: String,
+    default: null
+  },
+  bio: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  preferences: {
+    moduleDisplayMode: {
+      type: String,
+      enum: ['list', 'assigned'],
+      default: 'list'
+    },
+    notificationSettings: {
+      email: {
+        type: Boolean,
+        default: true
+      },
+      push: {
+        type: Boolean,
+        default: true
+      }
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now

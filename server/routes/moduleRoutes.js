@@ -5,6 +5,9 @@ const { validate, moduleSchema } = require('../middleware/validator');
 const {
   getModules,
   getModuleById,
+  getAssignedModules,
+  getMyOrder,
+  reorderModules,
   createModule,
   updateModule,
   deleteModule
@@ -12,6 +15,15 @@ const {
 
 // Get all modules - accessible to all authenticated users
 router.get('/', protect, getModules);
+
+// Get assigned modules
+router.get('/assigned', protect, getAssignedModules);
+
+// Get my module order
+router.get('/my-order', protect, getMyOrder);
+
+// Reorder modules
+router.put('/reorder', protect, reorderModules);
 
 // Get single module - accessible to all authenticated users
 router.get('/:id', protect, getModuleById);

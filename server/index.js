@@ -134,6 +134,11 @@ app.use("/api/quiz", require("./routes/quizRoutes"));
 app.use("/api/prospects", require("./routes/prospectRoutes"));
 app.use("/api/progress", require("./routes/progressRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
+app.use("/api/groups", require("./routes/groupRoutes"));
+app.use("/api/notifications", require("./routes/notificationRoutes"));
+app.use("/api/grades", require("./routes/gradeRoutes"));
+app.use("/api/discussions", require("./routes/discussionRoutes"));
+app.use("/api/profile", require("./routes/profileRoutes"));
 
 // Health check endpoint (accessible at /api/health)
 app.get("/api/health", async (req, res) => {

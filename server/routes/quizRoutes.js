@@ -7,8 +7,20 @@ const {
   createQuiz,
   updateQuiz,
   deleteQuiz,
-  submitQuiz
+  submitQuiz,
+  getQuizResults,
+  getStudentQuizResults,
+  getQuizAnalytics
 } = require('../controllers/quizController');
+
+// Get quiz results
+router.get('/results', protect, getQuizResults);
+
+// Get quiz analytics (teacher/admin)
+router.get('/analytics', protect, getQuizAnalytics);
+
+// Get student quiz results
+router.get('/results/student/:studentId', protect, getStudentQuizResults);
 
 // Get quizzes by module - accessible to all authenticated users
 router.get('/module/:moduleId', protect, getQuizzesByModule);

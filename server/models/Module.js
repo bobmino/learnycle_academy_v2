@@ -19,6 +19,16 @@ const moduleSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  assignedTo: {
+    users: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }],
+    groups: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Group'
+    }]
+  },
   createdAt: {
     type: Date,
     default: Date.now
