@@ -109,18 +109,21 @@ const login = async (req, res) => {
     const refreshToken = generateRefreshToken(user._id);
 
     // Set tokens in httpOnly cookies
-    res.cookie('accessToken', accessToken, {
+    // In production (Vercel), use 'none' for sameSite to allow cross-origin cookies
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000
-    });
+      secure: isProduction, // HTTPS required in production
+      sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-origin in production
+      maxAge: 15 * 60 * 1000, // 15 minutes
+      path: '/'
+    };
+
+    res.cookie('accessToken', accessToken, cookieOptions);
 
     res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000
+      ...cookieOptions,
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
     res.json({
@@ -142,15 +145,17 @@ const login = async (req, res) => {
 const logout = async (req, res) => {
   try {
     // Clear cookies
-    res.cookie('accessToken', '', {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const clearCookieOptions = {
       httpOnly: true,
-      expires: new Date(0)
-    });
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      expires: new Date(0),
+      path: '/'
+    };
 
-    res.cookie('refreshToken', '', {
-      httpOnly: true,
-      expires: new Date(0)
-    });
+    res.cookie('accessToken', '', clearCookieOptions);
+    res.cookie('refreshToken', '', clearCookieOptions);
 
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
@@ -188,11 +193,13 @@ const refreshToken = async (req, res) => {
     const newAccessToken = generateAccessToken(user._id, user.role);
 
     // Set new access token
+    const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('accessToken', newAccessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      maxAge: 15 * 60 * 1000,
+      path: '/'
     });
 
     res.json({ message: 'Token refreshed' });

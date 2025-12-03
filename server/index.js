@@ -29,13 +29,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // CORS Configuration
-// In production on Vercel, frontend and backend are on same domain
+// In production on Vercel, allow the specific domain
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? true // Allow same origin in production (Vercel)
+    ? (process.env.CLIENT_URL || 'https://learnycle-academy.vercel.app')
     : (process.env.CLIENT_URL || 'http://localhost:5173'),
   credentials: true,
   optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 };
 app.use(cors(corsOptions));
 

@@ -30,19 +30,44 @@ API.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
+      // Don't retry refresh for auth endpoints to avoid infinite loop
+      if (originalRequest.url?.includes('/auth/login') || 
+          originalRequest.url?.includes('/auth/register') ||
+          originalRequest.url?.includes('/auth/refresh')) {
+        return Promise.reject(error);
+      }
+
       try {
         // Try to refresh the token
-        await axios.post(
-          `${import.meta.env.VITE_API_URL}/auth/refresh`,
+        const refreshResponse = await axios.post(
+          `${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`,
           {},
-          { withCredentials: true }
+          { 
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
         );
 
-        // Retry the original request
-        return API(originalRequest);
+        // If refresh successful, retry the original request
+        if (refreshResponse.status === 200) {
+          return API(originalRequest);
+        }
       } catch (refreshError) {
-        // Refresh failed, redirect to login
-        window.location.href = '/login';
+        // Refresh failed, clear any stored auth state and redirect to login
+        console.error('Token refresh failed:', refreshError);
+        
+        // Clear Redux state if available
+        if (window.store) {
+          window.store.dispatch({ type: 'auth/logout' });
+        }
+        
+        // Only redirect if not already on login page
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+        
         return Promise.reject(refreshError);
       }
     }
