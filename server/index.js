@@ -66,6 +66,28 @@ const ensureAdminExists = async () => {
   }
 };
 
+// Function to ensure teacher user exists
+const ensureTeacherExists = async () => {
+  try {
+    const User = require('./models/User');
+    const teacher = await User.findOne({ email: 'teacher@learncycle.com' });
+    
+    if (!teacher) {
+      console.log('⚠️  No teacher user found. Creating default teacher...');
+      await User.create({
+        name: 'Teacher User',
+        email: 'teacher@learncycle.com',
+        password: 'teacher123',
+        role: 'teacher'
+      });
+      console.log('✅ Teacher user created: teacher@learncycle.com / teacher123');
+      console.log('⚠️  Please change the password after first login!');
+    }
+  } catch (error) {
+    console.error('Error ensuring teacher exists:', error.message);
+  }
+};
+
 // Ensure database connection for serverless (lazy connection)
 app.use(async (req, res, next) => {
   // Allow diagnostic endpoint to pass through even without DB connection
@@ -73,10 +95,11 @@ app.use(async (req, res, next) => {
     return next();
   }
   
-  // Ensure admin exists on first API call (after DB connection)
+  // Ensure admin and teacher exist on first API call (after DB connection)
   if (mongoose.connection.readyState === 1 && !global.adminChecked) {
     global.adminChecked = true;
     await ensureAdminExists();
+    await ensureTeacherExists();
   }
 
   try {
@@ -86,10 +109,11 @@ app.use(async (req, res, next) => {
       try {
         await connectDB();
         console.log('MongoDB connection established');
-        // Ensure admin exists after connection
+        // Ensure admin and teacher exist after connection
         if (!global.adminChecked) {
           global.adminChecked = true;
           await ensureAdminExists();
+          await ensureTeacherExists();
         }
       } catch (dbError) {
         console.error('❌ Failed to connect to MongoDB:', dbError.message);
@@ -215,6 +239,15 @@ app.get("/api/diagnostic", async (req, res) => {
       } catch (error) {
         diagnostic.mongodb.connectionError = error.message;
         diagnostic.mongodb.errorName = error.name;
+      }
+    }
+
+    // Try to ensure teacher exists if connected
+    if (mongoose.connection.readyState === 1) {
+      try {
+        await ensureTeacherExists();
+      } catch (error) {
+        diagnostic.teacherCreationError = error.message;
       }
     }
 

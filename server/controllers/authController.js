@@ -92,9 +92,28 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     // Check for user
-    const user = await User.findOne({ email }).select('+password');
+    let user = await User.findOne({ email }).select('+password');
 
-    if (!user) {
+    // Auto-create system accounts if they don't exist (only for specific emails)
+    if (!user && (email === 'teacher@learncycle.com' || email === 'admin@learncycle.com')) {
+      console.log(`⚠️  System account ${email} not found. Creating...`);
+      const role = email === 'admin@learncycle.com' ? 'admin' : 'teacher';
+      const defaultPassword = email === 'admin@learncycle.com' ? 'admin123' : 'teacher123';
+      
+      // Only create if password matches default
+      if (password === defaultPassword) {
+        user = await User.create({
+          name: role === 'admin' ? 'Admin User' : 'Teacher User',
+          email: email,
+          password: defaultPassword,
+          role: role
+        });
+        console.log(`✅ System account created: ${email} / ${defaultPassword}`);
+      } else {
+        console.error(`Login failed: User not found for email: ${email}`);
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
+    } else if (!user) {
       console.error(`Login failed: User not found for email: ${email}`);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
