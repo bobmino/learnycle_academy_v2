@@ -44,11 +44,39 @@ app.use(cors(corsOptions));
 // Static files for docs (PDFs)
 app.use("/docs", express.static(path.join(__dirname, "docs")));
 
+// Function to ensure admin user exists
+const ensureAdminExists = async () => {
+  try {
+    const User = require('./models/User');
+    const admin = await User.findOne({ role: 'admin' });
+    
+    if (!admin) {
+      console.log('⚠️  No admin user found. Creating default admin...');
+      await User.create({
+        name: 'Admin User',
+        email: 'admin@learncycle.com',
+        password: 'admin123',
+        role: 'admin'
+      });
+      console.log('✅ Admin user created: admin@learncycle.com / admin123');
+      console.log('⚠️  Please change the password after first login!');
+    }
+  } catch (error) {
+    console.error('Error ensuring admin exists:', error.message);
+  }
+};
+
 // Ensure database connection for serverless (lazy connection)
 app.use(async (req, res, next) => {
   // Allow diagnostic endpoint to pass through even without DB connection
   if (req.path === '/api/diagnostic' || req.path === '/api/health') {
     return next();
+  }
+  
+  // Ensure admin exists on first API call (after DB connection)
+  if (mongoose.connection.readyState === 1 && !global.adminChecked) {
+    global.adminChecked = true;
+    await ensureAdminExists();
   }
 
   try {
@@ -58,6 +86,11 @@ app.use(async (req, res, next) => {
       try {
         await connectDB();
         console.log('MongoDB connection established');
+        // Ensure admin exists after connection
+        if (!global.adminChecked) {
+          global.adminChecked = true;
+          await ensureAdminExists();
+        }
       } catch (dbError) {
         console.error('❌ Failed to connect to MongoDB:', dbError.message);
         console.error('Error details:', {

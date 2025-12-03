@@ -94,6 +94,7 @@ const login = async (req, res) => {
     const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
+      console.error(`Login failed: User not found for email: ${email}`);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
@@ -101,8 +102,11 @@ const login = async (req, res) => {
     const isMatch = await user.matchPassword(password);
 
     if (!isMatch) {
+      console.error(`Login failed: Invalid password for email: ${email}`);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+
+    console.log(`Login successful for user: ${email}, role: ${user.role}`);
 
     // Generate tokens
     const accessToken = generateAccessToken(user._id, user.role);
@@ -222,10 +226,50 @@ const getMe = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Create admin user if doesn't exist (for initial setup)
+ * @route   POST /api/auth/create-admin
+ * @access  Public (only if no admin exists)
+ */
+const createAdmin = async (req, res) => {
+  try {
+    // Check if admin already exists
+    const existingAdmin = await User.findOne({ role: 'admin' });
+    
+    if (existingAdmin) {
+      return res.status(400).json({ 
+        message: 'Admin user already exists',
+        email: existingAdmin.email 
+      });
+    }
+
+    // Create admin user
+    const admin = await User.create({
+      name: 'Admin User',
+      email: 'admin@learncycle.com',
+      password: 'admin123',
+      role: 'admin'
+    });
+
+    console.log('Admin user created:', admin.email);
+
+    res.status(201).json({
+      message: 'Admin user created successfully',
+      email: admin.email,
+      password: 'admin123',
+      note: 'Please change the password after first login'
+    });
+  } catch (error) {
+    console.error('Error creating admin:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   register,
   login,
   logout,
   refreshToken,
-  getMe
+  getMe,
+  createAdmin
 };
