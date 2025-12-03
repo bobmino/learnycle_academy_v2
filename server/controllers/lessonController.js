@@ -63,12 +63,23 @@ const getLessonById = async (req, res) => {
  */
 const createLesson = async (req, res) => {
   try {
-    const { module, title, content, order } = req.body;
+    const { module, title, content, order, assignToTeacher } = req.body;
 
     // Verify module exists
     const moduleExists = await Module.findById(module);
     if (!moduleExists) {
       return res.status(404).json({ message: 'Module not found' });
+    }
+
+    // If admin assigns to a teacher, verify teacher exists and set createdBy to teacher
+    let createdBy = req.user._id;
+    if (req.user.role === 'admin' && assignToTeacher) {
+      const User = require('../models/User');
+      const teacher = await User.findById(assignToTeacher);
+      if (!teacher || teacher.role !== 'teacher') {
+        return res.status(400).json({ message: 'Invalid teacher ID' });
+      }
+      createdBy = assignToTeacher;
     }
 
     const lesson = await Lesson.create({
@@ -78,7 +89,7 @@ const createLesson = async (req, res) => {
       order: order || 0,
       pdfUrl: req.file ? `/docs/uploads/${req.file.filename}` : null,
       category: req.body.category || null,
-      createdBy: req.user._id
+      createdBy
     });
 
     res.status(201).json(lesson);

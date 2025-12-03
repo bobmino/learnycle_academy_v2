@@ -1,0 +1,308 @@
+const mongoose = require('mongoose');
+const Module = require('../models/Module');
+const Lesson = require('../models/Lesson');
+const Project = require('../models/Project');
+const Category = require('../models/Category');
+const User = require('../models/User');
+const Formation = require('../models/Formation');
+const dotenv = require('dotenv');
+
+dotenv.config();
+
+/**
+ * Réorganise le contenu selon la nouvelle structure :
+ * - Les 10 modules deviennent des leçons dans un module "Économie"
+ * - Les études de cas deviennent des projets numérotés
+ */
+const reorganizeContent = async () => {
+  try {
+    // Connect to database if not already connected
+    if (mongoose.connection.readyState !== 1) {
+      await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/learncycle');
+      console.log('✅ Connected to MongoDB');
+    }
+
+    // Get admin and teacher users
+    const admin = await User.findOne({ role: 'admin' });
+    const teacher = await User.findOne({ role: 'teacher' });
+    
+    if (!admin) {
+      console.error('❌ Admin user not found.');
+      return { success: false, message: 'Admin user not found' };
+    }
+
+    const assignedTeacher = teacher || admin; // Use teacher if exists, otherwise admin
+
+    // Get or create category "Économie"
+    let economyCategory = await Category.findOne({ name: 'Économie', type: 'module' });
+    if (!economyCategory) {
+      economyCategory = await Category.create({
+        name: 'Économie',
+        type: 'module',
+        description: 'Module d\'économie et gestion de projet',
+        isDefault: true
+      });
+      console.log('✅ Created category: Économie');
+    }
+
+    // Get all existing modules (1-10) ordered by order
+    const existingModules = await Module.find({}).sort({ order: 1 }).limit(10);
+    console.log(`📚 Found ${existingModules.length} modules to convert`);
+
+    if (existingModules.length === 0) {
+      console.log('⚠️  No modules found to reorganize.');
+      return { success: false, message: 'No modules found' };
+    }
+
+    // Create or get the "Économie" module
+    let economyModule = await Module.findOne({ title: 'Module: Économie' });
+    
+    if (!economyModule) {
+      economyModule = await Module.create({
+        title: 'Module: Économie',
+        description: 'Module complet d\'économie et gestion de projet. Ce module regroupe toutes les compétences nécessaires pour créer et gérer un projet clé en main.',
+        caseStudyType: 'none',
+        order: 1,
+        category: economyCategory._id,
+        isActive: true,
+        createdBy: assignedTeacher._id
+      });
+      console.log('✅ Created module: Économie');
+    }
+
+    // Convert each module (1-10) to a lesson
+    let lessonOrder = 1;
+    for (const oldModule of existingModules) {
+      // Get lessons from the old module
+      const oldLessons = await Lesson.find({ module: oldModule._id }).sort({ order: 1 });
+      
+      // Convert the module title to lesson title (remove "Module X:" prefix)
+      const lessonTitle = oldModule.title.replace(/^Module \d+:\s*/, '');
+      
+      // Create a main lesson from the module
+      const mainLesson = await Lesson.create({
+        module: economyModule._id,
+        title: `Leçon ${lessonOrder}: ${lessonTitle}`,
+        content: `# ${lessonTitle}\n\n${oldModule.description}\n\n## Contenu du Module\n\nCe module couvre les aspects suivants :\n\n${oldLessons.map((l, idx) => `### ${l.title}\n\n${l.content.substring(0, 200)}...`).join('\n\n')}`,
+        order: lessonOrder,
+        category: economyCategory._id,
+        createdBy: assignedTeacher._id
+      });
+      
+      console.log(`✅ Created lesson: ${mainLesson.title}`);
+      lessonOrder++;
+
+      // Optionally, you can also create individual lessons from old lessons
+      // But for now, we'll just create one main lesson per old module
+    }
+
+    // Get or create category for case studies
+    let caseStudyCategory = await Category.findOne({ name: 'Études de Cas', type: 'project' });
+    if (!caseStudyCategory) {
+      caseStudyCategory = await Category.create({
+        name: 'Études de Cas',
+        type: 'project',
+        description: 'Projets d\'études de cas pratiques',
+        isDefault: true
+      });
+      console.log('✅ Created category: Études de Cas');
+    }
+
+    // Create the 3 case study projects
+    const caseStudies = [
+      {
+        name: 'Étude de Cas 1: Café',
+        description: 'Apprenez à créer un système de gestion complet pour un café. Ce projet couvre la gestion des commandes, des stocks, et de la caisse.',
+        type: 'case-study',
+        modules: [economyModule._id],
+        instructions: `# Étude de Cas 1: Café
+
+## Objectifs
+- Créer un business plan complet pour un café
+- Définir la stratégie de prospection client
+- Mettre en place un système de gestion
+- Planifier la communication et le marketing
+- Gérer les opérations quotidiennes
+
+## Tâches à réaliser
+1. Analyse de marché et étude de faisabilité
+2. Business plan détaillé
+3. Plan de prospection et acquisition clients
+4. Stratégie de communication
+5. Plan opérationnel et gestion
+6. Plan financier et projections
+
+## Livrables
+- Business plan complet (PDF)
+- Présentation PowerPoint
+- Fiches techniques et opérationnelles
+- Plan financier sur 3 ans`,
+        deliverables: [
+          { name: 'Business Plan', description: 'Document complet de 20-30 pages', required: true },
+          { name: 'Présentation', description: 'Présentation PowerPoint de 15-20 slides', required: true },
+          { name: 'Plan Financier', description: 'Tableaux financiers sur 3 ans', required: true }
+        ],
+        order: 1
+      },
+      {
+        name: 'Étude de Cas 2: Restaurant',
+        description: 'Développez une application de gestion pour un restaurant incluant les réservations, le menu digital, et le suivi des tables.',
+        type: 'case-study',
+        modules: [economyModule._id],
+        instructions: `# Étude de Cas 2: Restaurant
+
+## Objectifs
+- Développer un concept de restaurant complet
+- Créer une stratégie de différenciation
+- Mettre en place un système de gestion efficace
+- Planifier l'ouverture et les opérations
+
+## Tâches à réaliser
+1. Concept et positionnement
+2. Business plan et modèle économique
+3. Plan de prospection et fidélisation
+4. Stratégie marketing et communication
+5. Gestion opérationnelle
+6. Plan financier détaillé
+
+## Livrables
+- Concept et business plan
+- Présentation du projet
+- Plans opérationnels
+- Modèle financier`,
+        deliverables: [
+          { name: 'Business Plan', description: 'Document complet avec concept détaillé', required: true },
+          { name: 'Présentation', description: 'Présentation du concept et du plan', required: true },
+          { name: 'Plan Opérationnel', description: 'Manuel opérationnel du restaurant', required: true }
+        ],
+        order: 2
+      },
+      {
+        name: 'Étude de Cas 3: Hôtel',
+        description: 'Créez un système de réservation et de gestion hôtelière avec check-in/check-out, gestion des chambres et facturation.',
+        type: 'case-study',
+        modules: [economyModule._id],
+        instructions: `# Étude de Cas 3: Hôtel
+
+## Objectifs
+- Créer un projet hôtelier complet
+- Développer une stratégie de positionnement
+- Mettre en place une gestion efficace
+- Planifier le développement et l'expansion
+
+## Tâches à réaliser
+1. Analyse de marché et positionnement
+2. Business plan hôtelier
+3. Stratégie de prospection et réservation
+4. Plan marketing et communication
+5. Gestion opérationnelle et qualité
+6. Plan financier et investissement
+
+## Livrables
+- Business plan complet
+- Présentation du projet
+- Plans de gestion et opérationnels
+- Modèle financier et projections`,
+        deliverables: [
+          { name: 'Business Plan', description: 'Document complet pour projet hôtelier', required: true },
+          { name: 'Présentation', description: 'Présentation du concept hôtelier', required: true },
+          { name: 'Plan de Gestion', description: 'Manuel de gestion opérationnelle', required: true }
+        ],
+        order: 3
+      }
+    ];
+
+    // Create or update case studies
+    for (const caseStudy of caseStudies) {
+      let project = await Project.findOne({ name: caseStudy.name });
+      
+      if (project) {
+        console.log(`ℹ️  Case study "${caseStudy.name}" already exists. Updating...`);
+        project.description = caseStudy.description;
+        project.modules = caseStudy.modules;
+        project.type = caseStudy.type;
+        project.instructions = caseStudy.instructions;
+        project.deliverables = caseStudy.deliverables;
+        project.category = caseStudyCategory._id;
+        await project.save();
+      } else {
+        project = await Project.create({
+          name: caseStudy.name,
+          description: caseStudy.description,
+          modules: caseStudy.modules,
+          type: caseStudy.type,
+          instructions: caseStudy.instructions,
+          deliverables: caseStudy.deliverables,
+          category: caseStudyCategory._id,
+          isTransversal: false,
+          status: 'active',
+          createdBy: assignedTeacher._id
+        });
+        console.log(`✅ Created case study: ${caseStudy.name}`);
+      }
+    }
+
+    // Create or update formation
+    let formation = await Formation.findOne({ name: 'Projet clé en main' });
+    if (!formation) {
+      formation = await Formation.create({
+        name: 'Projet clé en main',
+        description: 'Formation complète pour créer et gérer un projet clé en main. Cette formation comprend un module Économie avec 10 leçons et 3 études de cas pratiques.',
+        category: economyCategory._id,
+        modules: [economyModule._id],
+        isActive: true,
+        createdBy: admin._id
+      });
+      console.log('✅ Created formation: Projet clé en main');
+    } else {
+      formation.modules = [economyModule._id];
+      await formation.save();
+      console.log('✅ Updated formation: Projet clé en main');
+    }
+
+    // Optionally, archive or delete old modules
+    // For now, we'll just leave them but they won't be used
+
+    console.log('✅ Reorganization complete!');
+    
+    return {
+      success: true,
+      message: 'Content reorganized successfully',
+      economyModule: {
+        _id: economyModule._id,
+        title: economyModule.title,
+        lessonsCount: lessonOrder - 1
+      },
+      caseStudies: caseStudies.length
+    };
+
+  } catch (error) {
+    console.error('❌ Error reorganizing content:', error);
+    return {
+      success: false,
+      message: 'Error reorganizing content',
+      error: error.message
+    };
+  }
+};
+
+// Run if called directly
+if (require.main === module) {
+  reorganizeContent()
+    .then(result => {
+      if (result.success) {
+        console.log('✅ Success:', result.message);
+        process.exit(0);
+      } else {
+        console.error('❌ Failed:', result.message);
+        process.exit(1);
+      }
+    })
+    .catch(error => {
+      console.error('❌ Fatal error:', error);
+      process.exit(1);
+    });
+}
+
+module.exports = { reorganizeContent };
+

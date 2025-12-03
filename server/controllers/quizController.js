@@ -76,6 +76,17 @@ const createQuiz = async (req, res) => {
       return res.status(404).json({ message: 'Module not found' });
     }
 
+    // If admin assigns to a teacher, verify teacher exists and set createdBy to teacher
+    let createdBy = req.user._id;
+    if (req.user.role === 'admin' && req.body.assignToTeacher) {
+      const User = require('../models/User');
+      const teacher = await User.findById(req.body.assignToTeacher);
+      if (!teacher || teacher.role !== 'teacher') {
+        return res.status(400).json({ message: 'Invalid teacher ID' });
+      }
+      createdBy = req.body.assignToTeacher;
+    }
+
     const quiz = await Quiz.create({
       module,
       title,
@@ -84,7 +95,7 @@ const createQuiz = async (req, res) => {
       isEmbedded: req.body.isEmbedded || false,
       embeddedInLesson: req.body.embeddedInLesson || null,
       displayPosition: req.body.displayPosition || 0,
-      createdBy: req.user._id
+      createdBy
     });
 
     res.status(201).json(quiz);

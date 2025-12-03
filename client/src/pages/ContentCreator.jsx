@@ -6,7 +6,8 @@ import {
   moduleService, 
   lessonService, 
   quizService,
-  projectService
+  projectService,
+  userService
 } from '../services/api';
 import Breadcrumbs from '../components/Breadcrumbs';
 import BackButton from '../components/BackButton';
@@ -22,6 +23,7 @@ const ContentCreator = () => {
   const { user } = useSelector((state) => state.auth);
   const [activeTab, setActiveTab] = useState('module'); // 'module', 'lesson', 'quiz', 'project'
   const [modules, setModules] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     // Module
@@ -55,12 +57,17 @@ const ContentCreator = () => {
     dueDate: '',
     instructions: '',
     projectCategory: null,
-    autoUnlockNextOnValidation: false
+    autoUnlockNextOnValidation: false,
+    // Teacher assignment (for admin)
+    assignToTeacher: ''
   });
 
   useEffect(() => {
     fetchModules();
-  }, []);
+    if (user?.role === 'admin') {
+      fetchTeachers();
+    }
+  }, [user]);
 
   const fetchModules = async () => {
     try {
@@ -70,6 +77,16 @@ const ContentCreator = () => {
       console.error('Failed to fetch modules:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTeachers = async () => {
+    try {
+      const response = await userService.getAll();
+      const teachersList = (response.data || []).filter(u => u.role === 'teacher');
+      setTeachers(teachersList);
+    } catch (error) {
+      console.error('Failed to fetch teachers:', error);
     }
   };
 
@@ -127,13 +144,19 @@ const ContentCreator = () => {
   const handleCreateLesson = async (e) => {
     e.preventDefault();
     try {
-      await lessonService.create({
+      const lessonData = {
         module: formData.selectedModule,
         title: formData.lessonTitle,
         content: formData.lessonContent,
         order: parseInt(formData.lessonOrder),
         category: formData.lessonCategory
-      });
+      };
+      
+      if (user?.role === 'admin' && formData.assignToTeacher) {
+        lessonData.assignToTeacher = formData.assignToTeacher;
+      }
+      
+      await lessonService.create(lessonData);
       alert('Leçon créée avec succès');
       setFormData(prev => ({ ...prev, lessonTitle: '', lessonContent: '', lessonOrder: parseInt(prev.lessonOrder) + 1 }));
     } catch (error) {
@@ -178,12 +201,18 @@ const ContentCreator = () => {
   const handleCreateQuiz = async (e) => {
     e.preventDefault();
     try {
-      await quizService.create({
+      const quizData = {
         module: formData.quizModule,
         title: formData.quizTitle,
         questions: formData.questions,
         category: formData.quizCategory
-      });
+      };
+      
+      if (user?.role === 'admin' && formData.assignToTeacher) {
+        quizData.assignToTeacher = formData.assignToTeacher;
+      }
+      
+      await quizService.create(quizData);
       alert('Quiz créé avec succès');
       setFormData(prev => ({
         ...prev,
@@ -198,7 +227,7 @@ const ContentCreator = () => {
   const handleCreateProject = async (e) => {
     e.preventDefault();
     try {
-      await projectService.create({
+      const projectData = {
         name: formData.projectName,
         description: formData.projectDescription,
         moduleIds: formData.projectModules.length > 0 ? formData.projectModules : undefined,
@@ -209,7 +238,13 @@ const ContentCreator = () => {
         instructions: formData.instructions,
         category: formData.projectCategory,
         autoUnlockNextOnValidation: formData.autoUnlockNextOnValidation
-      });
+      };
+      
+      if (user?.role === 'admin' && formData.assignToTeacher) {
+        projectData.assignToTeacher = formData.assignToTeacher;
+      }
+      
+      await projectService.create(projectData);
       alert('Projet créé avec succès');
       setFormData(prev => ({
         ...prev,
@@ -411,6 +446,26 @@ const ContentCreator = () => {
               label="Catégorie"
               className="mb-4"
             />
+            {user?.role === 'admin' && teachers.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Assigner à un Teacher (optionnel)
+                </label>
+                <select
+                  name="assignToTeacher"
+                  value={formData.assignToTeacher}
+                  onChange={handleInputChange}
+                  className="input-field"
+                >
+                  <option value="">Aucun (créé par admin)</option>
+                  {teachers.map(teacher => (
+                    <option key={teacher._id} value={teacher._id}>
+                      {teacher.name} ({teacher.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <button type="submit" className="btn-primary">
               Créer le Module
             </button>

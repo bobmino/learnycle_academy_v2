@@ -43,6 +43,16 @@ const createProject = async (req, res) => {
       }
     }
 
+    // If admin assigns to a teacher, verify teacher exists and set createdBy to teacher
+    let createdBy = req.user._id;
+    if (req.user.role === 'admin' && req.body.assignToTeacher) {
+      const teacher = await User.findById(req.body.assignToTeacher);
+      if (!teacher || teacher.role !== 'teacher') {
+        return res.status(400).json({ message: 'Invalid teacher ID' });
+      }
+      createdBy = req.body.assignToTeacher;
+    }
+
     const project = await Project.create({
       name,
       description,
@@ -54,7 +64,8 @@ const createProject = async (req, res) => {
       dueDate: dueDate || null,
       instructions: instructions || '',
       category: category || null,
-      autoUnlockNextOnValidation: autoUnlockNextOnValidation || false
+      autoUnlockNextOnValidation: autoUnlockNextOnValidation || false,
+      createdBy
     });
 
     // Notify students
