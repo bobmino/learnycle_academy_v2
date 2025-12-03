@@ -363,7 +363,7 @@ const TeacherDashboard = () => {
                 className="block p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-500 transition-colors"
               >
                 <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  ✏️ Créer du Contenu
+                  ✏️ Créer et gérer les modules, leçons, quizs et projets/études de cas
                 </span>
               </Link>
               <Link

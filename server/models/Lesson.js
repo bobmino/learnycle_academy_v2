@@ -42,6 +42,11 @@ const lessonSchema = new mongoose.Schema({
       default: false
     }
   }],
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -83,9 +83,85 @@ const deleteUser = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Suspend user
+ * @route   POST /api/users/:id/suspend
+ * @access  Private/Admin
+ */
+const suspendUser = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.role === 'admin') {
+      return res.status(403).json({ message: 'Cannot suspend admin users' });
+    }
+
+    user.isActive = false;
+    user.suspendedAt = Date.now();
+    user.suspendedBy = req.user._id;
+    user.suspensionReason = reason || null;
+
+    await user.save();
+    
+    res.json({ 
+      message: 'User suspended successfully',
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        isActive: user.isActive,
+        suspendedAt: user.suspendedAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Activate user
+ * @route   POST /api/users/:id/activate
+ * @access  Private/Admin
+ */
+const activateUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.isActive = true;
+    user.suspendedAt = null;
+    user.suspendedBy = null;
+    user.suspensionReason = null;
+
+    await user.save();
+    
+    res.json({ 
+      message: 'User activated successfully',
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        isActive: user.isActive
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getUsers,
   getUserById,
   updateUser,
-  deleteUser
+  deleteUser,
+  suspendUser,
+  activateUser
 };

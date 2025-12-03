@@ -177,9 +177,19 @@ const getModuleById = async (req, res) => {
  */
 const createModule = async (req, res) => {
   try {
-    const { title, description, caseStudyType, order } = req.body;
-
-    const { unlockMode, approvalRequired, projectRequired, isActive } = req.body;
+    const { 
+      title, 
+      description, 
+      caseStudyType, 
+      order,
+      unlockMode, 
+      approvalRequired, 
+      projectRequired, 
+      isActive,
+      category,
+      formation,
+      autoUnlockOnProjectValidation
+    } = req.body;
 
     const module = await Module.create({
       title,
@@ -189,9 +199,15 @@ const createModule = async (req, res) => {
       unlockMode: unlockMode || 'auto',
       approvalRequired: approvalRequired || false,
       projectRequired: projectRequired || false,
-      isActive: isActive !== undefined ? isActive : true
+      isActive: isActive !== undefined ? isActive : true,
+      category: category || null,
+      formation: formation || null,
+      autoUnlockOnProjectValidation: autoUnlockOnProjectValidation || false,
+      createdBy: req.user._id
     });
 
+    await module.populate('category', 'name');
+    await module.populate('formation', 'name');
     res.status(201).json(module);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -211,12 +227,30 @@ const updateModule = async (req, res) => {
       return res.status(404).json({ message: 'Module not found' });
     }
 
-    module.title = req.body.title || module.title;
-    module.description = req.body.description || module.description;
-    module.caseStudyType = req.body.caseStudyType || module.caseStudyType;
-    module.order = req.body.order !== undefined ? req.body.order : module.order;
+    // Check if teacher can modify (only their own content)
+    if (req.user.role === 'teacher' && module.createdBy && 
+        module.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only modify your own modules' });
+    }
+
+    // Update fields
+    if (req.body.title !== undefined) module.title = req.body.title;
+    if (req.body.description !== undefined) module.description = req.body.description;
+    if (req.body.caseStudyType !== undefined) module.caseStudyType = req.body.caseStudyType;
+    if (req.body.order !== undefined) module.order = req.body.order;
+    if (req.body.isActive !== undefined) module.isActive = req.body.isActive;
+    if (req.body.category !== undefined) module.category = req.body.category;
+    if (req.body.formation !== undefined) module.formation = req.body.formation;
+    if (req.body.unlockMode !== undefined) module.unlockMode = req.body.unlockMode;
+    if (req.body.approvalRequired !== undefined) module.approvalRequired = req.body.approvalRequired;
+    if (req.body.projectRequired !== undefined) module.projectRequired = req.body.projectRequired;
+    if (req.body.autoUnlockOnProjectValidation !== undefined) {
+      module.autoUnlockOnProjectValidation = req.body.autoUnlockOnProjectValidation;
+    }
 
     const updatedModule = await module.save();
+    await updatedModule.populate('category', 'name');
+    await updatedModule.populate('formation', 'name');
     res.json(updatedModule);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -234,6 +268,12 @@ const deleteModule = async (req, res) => {
     
     if (!module) {
       return res.status(404).json({ message: 'Module not found' });
+    }
+
+    // Check if teacher can delete (only their own content)
+    if (req.user.role === 'teacher' && module.createdBy && 
+        module.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only delete your own modules' });
     }
 
     // Delete all lessons associated with this module

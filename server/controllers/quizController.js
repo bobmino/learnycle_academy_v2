@@ -79,7 +79,12 @@ const createQuiz = async (req, res) => {
     const quiz = await Quiz.create({
       module,
       title,
-      questions
+      questions,
+      category: req.body.category || null,
+      isEmbedded: req.body.isEmbedded || false,
+      embeddedInLesson: req.body.embeddedInLesson || null,
+      displayPosition: req.body.displayPosition || 0,
+      createdBy: req.user._id
     });
 
     res.status(201).json(quiz);
@@ -101,10 +106,21 @@ const updateQuiz = async (req, res) => {
       return res.status(404).json({ message: 'Quiz not found' });
     }
 
-    quiz.title = req.body.title || quiz.title;
-    quiz.questions = req.body.questions || quiz.questions;
+    // Check if teacher can modify (only their own content)
+    if (req.user.role === 'teacher' && quiz.createdBy && 
+        quiz.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only modify your own quizzes' });
+    }
+
+    if (req.body.title !== undefined) quiz.title = req.body.title;
+    if (req.body.questions !== undefined) quiz.questions = req.body.questions;
+    if (req.body.category !== undefined) quiz.category = req.body.category;
+    if (req.body.isEmbedded !== undefined) quiz.isEmbedded = req.body.isEmbedded;
+    if (req.body.embeddedInLesson !== undefined) quiz.embeddedInLesson = req.body.embeddedInLesson;
+    if (req.body.displayPosition !== undefined) quiz.displayPosition = req.body.displayPosition;
 
     const updatedQuiz = await quiz.save();
+    await updatedQuiz.populate('category', 'name');
     res.json(updatedQuiz);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -124,12 +140,19 @@ const deleteQuiz = async (req, res) => {
       return res.status(404).json({ message: 'Quiz not found' });
     }
 
+    // Check if teacher can delete (only their own content)
+    if (req.user.role === 'teacher' && quiz.createdBy && 
+        quiz.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only delete your own quizzes' });
+    }
+
     await quiz.deleteOne();
     res.json({ message: 'Quiz removed' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 /**
  * @desc    Submit quiz answers

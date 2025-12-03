@@ -217,7 +217,7 @@ const AdminDashboard = () => {
         </Link>
         <Link to="/content-creator" className="card-hover">
           <div className="text-3xl mb-2">✏️</div>
-          <h3 className="font-semibold text-gray-900 dark:text-white">Créer du Contenu</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-white">Créer et gérer les modules, leçons, quizs et projets/études de cas</h3>
         </Link>
         <Link to="/notifications" className="card-hover">
           <div className="text-3xl mb-2">🔔</div>

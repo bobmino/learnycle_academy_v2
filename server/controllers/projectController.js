@@ -499,20 +499,29 @@ const updateProject = async (req, res) => {
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    const { name, description, status, deliverables, dueDate, instructions } = req.body;
+    // Check if teacher can modify (only their own content)
+    if (req.user.role === 'teacher' && project.createdBy && 
+        project.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only modify your own projects' });
+    }
 
-    if (name) project.name = name;
-    if (description) project.description = description;
-    if (status) project.status = status;
-    if (deliverables) project.deliverables = deliverables;
+    const { name, description, status, deliverables, dueDate, instructions, category, autoUnlockNextOnValidation } = req.body;
+
+    if (name !== undefined) project.name = name;
+    if (description !== undefined) project.description = description;
+    if (status !== undefined) project.status = status;
+    if (deliverables !== undefined) project.deliverables = deliverables;
     if (dueDate !== undefined) project.dueDate = dueDate;
     if (instructions !== undefined) project.instructions = instructions;
+    if (category !== undefined) project.category = category;
+    if (autoUnlockNextOnValidation !== undefined) project.autoUnlockNextOnValidation = autoUnlockNextOnValidation;
 
     await project.save();
 
-    await project.populate('module', 'title');
+    await project.populate('modules', 'title');
     await project.populate('group', 'name');
     await project.populate('students', 'name email');
+    await project.populate('category', 'name');
 
     res.json(project);
   } catch (error) {
@@ -527,13 +536,18 @@ const updateProject = async (req, res) => {
  */
 const deleteProject = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Only admin can delete projects' });
-    }
-
     const project = await Project.findById(req.params.id);
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
+    }
+
+    // Admin can delete any project, teacher can only delete their own
+    if (req.user.role === 'teacher') {
+      if (!project.createdBy || project.createdBy.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'You can only delete your own projects' });
+      }
+    } else if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Only admin and teachers can delete projects' });
     }
 
     // Delete all submissions

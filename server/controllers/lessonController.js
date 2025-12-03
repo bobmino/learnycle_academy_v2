@@ -76,7 +76,9 @@ const createLesson = async (req, res) => {
       title,
       content,
       order: order || 0,
-      pdfUrl: req.file ? `/docs/uploads/${req.file.filename}` : null
+      pdfUrl: req.file ? `/docs/uploads/${req.file.filename}` : null,
+      category: req.body.category || null,
+      createdBy: req.user._id
     });
 
     res.status(201).json(lesson);
@@ -98,15 +100,24 @@ const updateLesson = async (req, res) => {
       return res.status(404).json({ message: 'Lesson not found' });
     }
 
-    lesson.title = req.body.title || lesson.title;
-    lesson.content = req.body.content || lesson.content;
-    lesson.order = req.body.order !== undefined ? req.body.order : lesson.order;
+    // Check if teacher can modify (only their own content)
+    if (req.user.role === 'teacher' && lesson.createdBy && 
+        lesson.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only modify your own lessons' });
+    }
+
+    if (req.body.title !== undefined) lesson.title = req.body.title;
+    if (req.body.content !== undefined) lesson.content = req.body.content;
+    if (req.body.order !== undefined) lesson.order = req.body.order;
+    if (req.body.category !== undefined) lesson.category = req.body.category;
+    if (req.body.embeddedQuizzes !== undefined) lesson.embeddedQuizzes = req.body.embeddedQuizzes;
 
     if (req.file) {
       lesson.pdfUrl = `/docs/uploads/${req.file.filename}`;
     }
 
     const updatedLesson = await lesson.save();
+    await updatedLesson.populate('category', 'name');
     res.json(updatedLesson);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -124,6 +135,12 @@ const deleteLesson = async (req, res) => {
     
     if (!lesson) {
       return res.status(404).json({ message: 'Lesson not found' });
+    }
+
+    // Check if teacher can delete (only their own content)
+    if (req.user.role === 'teacher' && lesson.createdBy && 
+        lesson.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only delete your own lessons' });
     }
 
     // Delete associated PDF if exists

@@ -5,7 +5,9 @@ const {
   getUsers,
   getUserById,
   updateUser,
-  deleteUser
+  deleteUser,
+  suspendUser,
+  activateUser
 } = require('../controllers/userController');
 
 // All routes are protected and admin only
@@ -19,5 +21,11 @@ router.route('/:id')
   .get(getUserById)
   .put(updateUser)
   .delete(deleteUser);
+
+router.route('/:id/suspend')
+  .post(suspendUser);
+
+router.route('/:id/activate')
+  .post(activateUser);
 
 module.exports = router;
