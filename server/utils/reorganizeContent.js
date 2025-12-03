@@ -36,13 +36,23 @@ const reorganizeContent = async () => {
     // Get or create category "Économie"
     let economyCategory = await Category.findOne({ name: 'Économie', type: 'module' });
     if (!economyCategory) {
-      economyCategory = await Category.create({
-        name: 'Économie',
-        type: 'module',
-        description: 'Module d\'économie et gestion de projet',
-        isDefault: true
-      });
-      console.log('✅ Created category: Économie');
+      try {
+        economyCategory = await Category.create({
+          name: 'Économie',
+          type: 'module',
+          description: 'Module d\'économie et gestion de projet',
+          isDefault: true,
+          createdBy: admin._id
+        });
+        console.log('✅ Created category: Économie');
+      } catch (error) {
+        console.error('❌ Error creating Économie category:', error);
+        // Try to find it again in case it was created concurrently
+        economyCategory = await Category.findOne({ name: 'Économie', type: 'module' });
+        if (!economyCategory) {
+          throw new Error(`Failed to create or find Économie category: ${error.message}`);
+        }
+      }
     }
 
     // Get all existing modules (1-10) ordered by order, excluding case study modules
@@ -86,13 +96,34 @@ const reorganizeContent = async () => {
       // Convert the module title to lesson title (remove "Module X:" prefix)
       const lessonTitle = oldModule.title.replace(/^Module \d+:\s*/, '');
       
+      // Get lesson category (Économie for lessons)
+      let economyLessonCategory = await Category.findOne({ name: 'Économie', type: 'lesson' });
+      if (!economyLessonCategory) {
+        try {
+          economyLessonCategory = await Category.create({
+            name: 'Économie',
+            type: 'lesson',
+            description: 'Leçons liées à l\'économie et la gestion',
+            isDefault: true,
+            createdBy: admin._id
+          });
+        } catch (error) {
+          economyLessonCategory = await Category.findOne({ name: 'Économie', type: 'lesson' });
+        }
+      }
+
+      // Create lesson content
+      const lessonContent = oldLessons.length > 0
+        ? `# ${lessonTitle}\n\n${oldModule.description || ''}\n\n## Contenu du Module\n\nCe module couvre les aspects suivants :\n\n${oldLessons.map((l, idx) => `### ${l.title}\n\n${(l.content || '').substring(0, 200)}...`).join('\n\n')}`
+        : `# ${lessonTitle}\n\n${oldModule.description || 'Contenu de la leçon'}`;
+
       // Create a main lesson from the module
       const mainLesson = await Lesson.create({
         module: economyModule._id,
         title: `Leçon ${lessonOrder}: ${lessonTitle}`,
-        content: `# ${lessonTitle}\n\n${oldModule.description}\n\n## Contenu du Module\n\nCe module couvre les aspects suivants :\n\n${oldLessons.map((l, idx) => `### ${l.title}\n\n${l.content.substring(0, 200)}...`).join('\n\n')}`,
+        content: lessonContent,
         order: lessonOrder,
-        category: economyCategory._id,
+        category: economyLessonCategory?._id || null,
         createdBy: assignedTeacher._id
       });
       
@@ -106,13 +137,23 @@ const reorganizeContent = async () => {
     // Get or create category for case studies
     let caseStudyCategory = await Category.findOne({ name: 'Études de Cas', type: 'project' });
     if (!caseStudyCategory) {
-      caseStudyCategory = await Category.create({
-        name: 'Études de Cas',
-        type: 'project',
-        description: 'Projets d\'études de cas pratiques',
-        isDefault: true
-      });
-      console.log('✅ Created category: Études de Cas');
+      try {
+        caseStudyCategory = await Category.create({
+          name: 'Études de Cas',
+          type: 'project',
+          description: 'Projets d\'études de cas pratiques',
+          isDefault: true,
+          createdBy: admin._id
+        });
+        console.log('✅ Created category: Études de Cas');
+      } catch (error) {
+        console.error('❌ Error creating Études de Cas category:', error);
+        // Try to find it again in case it was created concurrently
+        caseStudyCategory = await Category.findOne({ name: 'Études de Cas', type: 'project' });
+        if (!caseStudyCategory) {
+          throw new Error(`Failed to create or find Études de Cas category: ${error.message}`);
+        }
+      }
     }
 
     // Create the 3 case study projects

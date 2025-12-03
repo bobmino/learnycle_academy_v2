@@ -61,25 +61,30 @@ const organizeFormationContent = async (req, res) => {
  */
 const reorganizeContentData = async (req, res) => {
   try {
+    console.log('🔄 Starting content reorganization...');
     const result = await reorganizeContent();
     
     if (result.success) {
+      console.log('✅ Reorganization successful:', result.message);
       res.json({
         message: result.message,
         economyModule: result.economyModule,
         caseStudies: result.caseStudies
       });
     } else {
+      console.error('❌ Reorganization failed:', result.message, result.error);
       res.status(400).json({
-        message: result.message,
-        error: result.error
+        message: result.message || 'Error reorganizing content',
+        error: result.error || 'Unknown error'
       });
     }
   } catch (error) {
-    console.error('Error reorganizing content:', error);
+    console.error('❌ Error reorganizing content:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ 
       message: 'Failed to reorganize content', 
-      error: error.message 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
