@@ -124,33 +124,34 @@ const Modules = () => {
             </div>
           ) : (
             modules.map((module) => (
-          <Link
-            key={module._id}
-            to={`/modules/${module._id}`}
-            className="dashboard-card group"
-          >
-            <div className="mb-4">
-              {module.caseStudyType === 'cafe' && <span className="text-5xl">☕</span>}
-              {module.caseStudyType === 'restaurant' && <span className="text-5xl">🍽️</span>}
-              {module.caseStudyType === 'hotel' && <span className="text-5xl">🏨</span>}
-              {module.caseStudyType === 'none' && <span className="text-5xl">📚</span>}
-            </div>
-            
-            <h2 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-              {module.title}
-            </h2>
-            
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              {module.description}
-            </p>
+              <Link
+                key={module._id}
+                to={`/modules/${module._id}`}
+                className="dashboard-card group"
+              >
+                <div className="mb-4">
+                  {module.caseStudyType === 'cafe' && <span className="text-5xl">☕</span>}
+                  {module.caseStudyType === 'restaurant' && <span className="text-5xl">🍽️</span>}
+                  {module.caseStudyType === 'hotel' && <span className="text-5xl">🏨</span>}
+                  {module.caseStudyType === 'none' && <span className="text-5xl">📚</span>}
+                </div>
+                
+                <h2 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                  {module.title}
+                </h2>
+                
+                <p className="text-gray-600 dark:text-gray-300 mb-4">
+                  {module.description}
+                </p>
 
-            {module.caseStudyType !== 'none' && (
-              <span className="inline-block px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-sm font-medium">
-                {t('modules.caseStudies')} - {module.caseStudyType}
-              </span>
-            )}
-          </Link>
-            ))}
+                {module.caseStudyType !== 'none' && (
+                  <span className="inline-block px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-sm font-medium">
+                    {t('modules.caseStudies')} - {module.caseStudyType}
+                  </span>
+                )}
+              </Link>
+            ))
+          )}
         </div>
       )}
 
