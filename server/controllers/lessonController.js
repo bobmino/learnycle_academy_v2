@@ -24,7 +24,13 @@ const getLessons = async (req, res) => {
  */
 const getLessonsByModule = async (req, res) => {
   try {
-    const lessons = await Lesson.find({ module: req.params.moduleId }).sort({ order: 1 });
+    const { category } = req.query;
+    const query = { module: req.params.moduleId };
+    if (category) query.category = category;
+    const lessons = await Lesson.find(query)
+      .populate('category', 'name')
+      .populate('embeddedQuizzes.quiz')
+      .sort({ order: 1 });
     res.json(lessons);
   } catch (error) {
     res.status(500).json({ message: error.message });

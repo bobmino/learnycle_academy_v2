@@ -12,12 +12,19 @@ const { createNotification, NOTIFICATION_TYPES } = require('../services/notifica
  */
 const createProject = async (req, res) => {
   try {
-    const { name, description, moduleId, groupId, studentIds, type, deliverables, dueDate, instructions } = req.body;
+    const { name, description, moduleIds, moduleId, groupId, studentIds, type, deliverables, dueDate, instructions, category, autoUnlockNextOnValidation } = req.body;
 
-    // Verify module exists
-    const module = await Module.findById(moduleId);
-    if (!module) {
-      return res.status(404).json({ message: 'Module not found' });
+    // Support both single moduleId (backward compatibility) and moduleIds array
+    const modulesArray = moduleIds || (moduleId ? [moduleId] : []);
+    
+    if (modulesArray.length === 0) {
+      return res.status(400).json({ message: 'At least one module is required' });
+    }
+
+    // Verify modules exist
+    const modules = await Module.find({ _id: { $in: modulesArray } });
+    if (modules.length !== modulesArray.length) {
+      return res.status(404).json({ message: 'One or more modules not found' });
     }
 
     // Verify group exists if provided
@@ -39,13 +46,15 @@ const createProject = async (req, res) => {
     const project = await Project.create({
       name,
       description,
-      module: moduleId,
+      modules: modulesArray,
       group: groupId || null,
       students: studentIds || [],
       type: type || 'project',
       deliverables: deliverables || [],
       dueDate: dueDate || null,
-      instructions: instructions || ''
+      instructions: instructions || '',
+      category: category || null,
+      autoUnlockNextOnValidation: autoUnlockNextOnValidation || false
     });
 
     // Notify students
@@ -66,8 +75,8 @@ const createProject = async (req, res) => {
           userId,
           type: NOTIFICATION_TYPES.MODULE_ASSIGNED,
           title: 'Nouveau projet assigné',
-          message: `Un nouveau projet "${name}" a été assigné pour le module "${module.title}"`,
-          relatedEntity: { entityType: 'module', entityId: moduleId }
+          message: `Un nouveau projet "${name}" a été assigné`,
+          relatedEntity: { entityType: 'project', entityId: project._id }
         })
       ));
     }
@@ -89,7 +98,7 @@ const createProject = async (req, res) => {
  */
 const getProjects = async (req, res) => {
   try {
-    const { groupId, studentId, moduleId, type, status } = req.query;
+    const { groupId, studentId, moduleId, type, status, category } = req.query;
     let query = {};
 
     // Filter by group
@@ -107,7 +116,7 @@ const getProjects = async (req, res) => {
 
     // Filter by module
     if (moduleId) {
-      query.module = moduleId;
+      query.modules = moduleId;
     }
 
     // Filter by type
@@ -120,10 +129,16 @@ const getProjects = async (req, res) => {
       query.status = status;
     }
 
+    // Filter by category
+    if (category) {
+      query.category = category;
+    }
+
     const projects = await Project.find(query)
-      .populate('module', 'title description')
+      .populate('modules', 'title description')
       .populate('group', 'name')
       .populate('students', 'name email avatar')
+      .populate('category', 'name')
       .sort({ createdAt: -1 });
 
     res.json(projects);
@@ -156,8 +171,9 @@ const getMyProjects = async (req, res) => {
         ],
         status: { $ne: 'archived' }
       })
-        .populate('module', 'title description')
+        .populate('modules', 'title description')
         .populate('group', 'name')
+        .populate('category', 'name')
         .sort({ createdAt: -1 });
     } else if (userRole === 'teacher') {
       // Get projects from groups where teacher is assigned
@@ -168,16 +184,18 @@ const getMyProjects = async (req, res) => {
         group: { $in: groupIds },
         status: { $ne: 'archived' }
       })
-        .populate('module', 'title description')
+        .populate('modules', 'title description')
         .populate('group', 'name')
         .populate('students', 'name email')
+        .populate('category', 'name')
         .sort({ createdAt: -1 });
     } else if (userRole === 'admin') {
       // Admin sees all projects
       projects = await Project.find({ status: { $ne: 'archived' } })
-        .populate('module', 'title description')
+        .populate('modules', 'title description')
         .populate('group', 'name')
         .populate('students', 'name email')
+        .populate('category', 'name')
         .sort({ createdAt: -1 });
     }
 
@@ -195,9 +213,10 @@ const getMyProjects = async (req, res) => {
 const getProjectById = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id)
-      .populate('module', 'title description')
+      .populate('modules', 'title description')
       .populate('group', 'name description')
-      .populate('students', 'name email avatar');
+      .populate('students', 'name email avatar')
+      .populate('category', 'name');
 
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
@@ -293,7 +312,7 @@ const submitProject = async (req, res) => {
           type: NOTIFICATION_TYPES.QUIZ_SUBMITTED,
           title: 'Projet soumis',
           message: `${req.user.name} a soumis le projet "${project.name}"`,
-          relatedEntity: { entityType: 'module', entityId: project.module }
+          relatedEntity: { entityType: 'project', entityId: project._id }
         });
       }
     }
@@ -312,7 +331,7 @@ const submitProject = async (req, res) => {
 const gradeProject = async (req, res) => {
   try {
     const { studentId, grade, comment, status, revisionNotes } = req.body;
-    const project = await Project.findById(req.params.id);
+    const project = await Project.findById(req.params.id).populate('modules');
 
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
@@ -327,9 +346,11 @@ const gradeProject = async (req, res) => {
       return res.status(404).json({ message: 'Submission not found' });
     }
 
+    const previousGrade = submission.grade;
     submission.grade = grade;
     submission.comment = comment;
     submission.gradedBy = req.user._id;
+    submission.gradedAt = Date.now();
     if (status) submission.status = status;
     if (revisionNotes) submission.revisionNotes = revisionNotes;
 
@@ -341,14 +362,126 @@ const gradeProject = async (req, res) => {
       type: NOTIFICATION_TYPES.GRADE_RECEIVED,
       title: 'Projet noté',
       message: `Votre projet "${project.name}" a été noté: ${grade}/100`,
-      relatedEntity: { entityType: 'module', entityId: project.module }
+      relatedEntity: { entityType: 'project', entityId: project._id }
     });
+
+    // Auto-unlock logic: If project is validated (grade >= passing threshold, typically 60 or 70)
+    // and autoUnlockNextOnValidation is true, unlock next module
+    const ModuleApproval = require('../models/ModuleApproval');
+    const passingGrade = 60; // Minimum grade to consider project validated
+    
+    if (grade >= passingGrade && (project.autoUnlockNextOnValidation || 
+        (project.modules && project.modules.length > 0 && project.modules.some(m => m.autoUnlockOnProjectValidation)))) {
+      
+      // For each module associated with this project, find and unlock the next module
+      for (const module of project.modules) {
+        if (module.autoUnlockOnProjectValidation) {
+          // Find next module by order
+          const nextModule = await Module.findOne({ 
+            order: { $gt: module.order },
+            isActive: true 
+          }).sort({ order: 1 });
+          
+          if (nextModule) {
+            // Check if approval already exists
+            let approval = await ModuleApproval.findOne({
+              user: studentId,
+              module: nextModule._id
+            });
+            
+            if (!approval) {
+              // Auto-approve next module
+              approval = await ModuleApproval.create({
+                user: studentId,
+                module: nextModule._id,
+                status: 'approved',
+                approvedBy: req.user._id,
+                approvedAt: Date.now(),
+                triggeredBy: 'project_validation',
+                relatedProject: project._id,
+                comment: `Débloqué automatiquement après validation du projet "${project.name}"`
+              });
+              
+              // Notify student
+              await createNotification({
+                userId: studentId,
+                type: NOTIFICATION_TYPES.MODULE_APPROVED,
+                title: 'Module débloqué',
+                message: `Le module "${nextModule.title}" a été débloqué automatiquement après validation de votre projet`,
+                relatedEntity: { entityType: 'module', entityId: nextModule._id }
+              });
+            } else if (approval.status === 'pending') {
+              // Auto-approve pending request
+              approval.status = 'approved';
+              approval.approvedBy = req.user._id;
+              approval.approvedAt = Date.now();
+              approval.triggeredBy = 'project_validation';
+              approval.relatedProject = project._id;
+              approval.comment = `Débloqué automatiquement après validation du projet "${project.name}"`;
+              await approval.save();
+              
+              // Notify student
+              await createNotification({
+                userId: studentId,
+                type: NOTIFICATION_TYPES.MODULE_APPROVED,
+                title: 'Module débloqué',
+                message: `Le module "${nextModule.title}" a été débloqué automatiquement après validation de votre projet`,
+                relatedEntity: { entityType: 'module', entityId: nextModule._id }
+              });
+            }
+          }
+        } else {
+          // If autoUnlockOnProjectValidation is false, create approval request instead
+          const nextModule = await Module.findOne({ 
+            order: { $gt: module.order },
+            isActive: true 
+          }).sort({ order: 1 });
+          
+          if (nextModule) {
+            const existingApproval = await ModuleApproval.findOne({
+              user: studentId,
+              module: nextModule._id
+            });
+            
+            if (!existingApproval) {
+              await ModuleApproval.create({
+                user: studentId,
+                module: nextModule._id,
+                status: 'pending',
+                triggeredBy: 'project_validation',
+                relatedProject: project._id,
+                comment: `Demande automatique après validation du projet "${project.name}"`
+              });
+              
+              // Notify teacher/admin
+              const User = require('../models/User');
+              const Group = require('../models/Group');
+              const student = await User.findById(studentId);
+              
+              if (student.groupId) {
+                const group = await Group.findById(student.groupId).populate('teacher');
+                if (group.teacher) {
+                  await createNotification({
+                    userId: group.teacher._id,
+                    type: NOTIFICATION_TYPES.MODULE_APPROVAL_REQUESTED,
+                    title: 'Demande d\'approbation automatique',
+                    message: `${student.name} a validé le projet "${project.name}" et demande l'approbation pour le module "${nextModule.title}"`,
+                    relatedEntity: { entityType: 'module', entityId: nextModule._id }
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
 
     await submission.populate('student', 'name email');
     await submission.populate('gradedBy', 'name email');
 
     res.json(submission);
   } catch (error) {
+    console.error('Error grading project:', error);
     res.status(500).json({ message: error.message });
   }
 };

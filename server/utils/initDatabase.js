@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Module = require('../models/Module');
 const Lesson = require('../models/Lesson');
 const Quiz = require('../models/Quiz');
+const seedCategories = require('./seedCategories');
 
 const users = [
   {
@@ -171,6 +172,9 @@ const quizzes = [
  */
 const initDatabase = async () => {
   try {
+    // Seed default categories first
+    await seedCategories();
+    
     // Create users if they don't exist
     for (const userData of users) {
       const existingUser = await User.findOne({ email: userData.email });

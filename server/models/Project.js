@@ -11,10 +11,14 @@ const projectSchema = new mongoose.Schema({
     required: [true, 'Please add a project description'],
     trim: true
   },
-  module: {
+  modules: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Module',
     required: true
+  }],
+  isTransversal: {
+    type: Boolean,
+    default: false
   },
   group: {
     type: mongoose.Schema.Types.ObjectId,
@@ -48,6 +52,15 @@ const projectSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  category: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    default: null
+  },
+  autoUnlockNextOnValidation: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -64,11 +77,22 @@ projectSchema.pre('save', function(next) {
   next();
 });
 
+// Set isTransversal based on modules array length
+projectSchema.pre('save', function(next) {
+  if (this.modules && this.modules.length > 1) {
+    this.isTransversal = true;
+  } else {
+    this.isTransversal = false;
+  }
+  next();
+});
+
 // Index for efficient queries
-projectSchema.index({ module: 1 });
+projectSchema.index({ modules: 1 });
 projectSchema.index({ group: 1 });
 projectSchema.index({ students: 1 });
 projectSchema.index({ status: 1 });
+projectSchema.index({ category: 1 });
 
 module.exports = mongoose.model('Project', projectSchema);
 

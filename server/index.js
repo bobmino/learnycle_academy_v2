@@ -173,6 +173,8 @@ app.use("/api/discussions", require("./routes/discussionRoutes"));
 app.use("/api/profile", require("./routes/profileRoutes"));
 app.use("/api/projects", require("./routes/projectRoutes"));
 app.use("/api/approvals", require("./routes/approvalRoutes"));
+app.use("/api/categories", require("./routes/categoryRoutes"));
+app.use("/api/formations", require("./routes/formationRoutes"));
 
 // Health check endpoint (accessible at /api/health)
 app.get("/api/health", async (req, res) => {

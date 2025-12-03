@@ -23,6 +23,25 @@ const lessonSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  category: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    default: null
+  },
+  embeddedQuizzes: [{
+    quiz: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Quiz'
+    },
+    position: {
+      type: Number,
+      default: 0
+    },
+    displayAfter: {
+      type: Boolean,
+      default: false
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now

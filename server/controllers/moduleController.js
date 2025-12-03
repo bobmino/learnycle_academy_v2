@@ -12,6 +12,7 @@ const Group = require('../models/Group');
  */
 const getModules = async (req, res) => {
   try {
+    const { category } = req.query;
     const user = await User.findById(req.user._id);
     const displayMode = user.preferences?.moduleDisplayMode || 'list';
 
@@ -34,10 +35,14 @@ const getModules = async (req, res) => {
 
       // Combine group and individual assignments
       const assignedModuleIds = [...new Set([...groupModuleIds, ...individualModuleIds])];
-      modules = await Module.find({ _id: { $in: assignedModuleIds } }).sort({ order: 1 });
+      const query = { _id: { $in: assignedModuleIds } };
+      if (category) query.category = category;
+      modules = await Module.find(query).populate('category', 'name').sort({ order: 1 });
     } else {
       // Get all modules
-      modules = await Module.find({}).sort({ order: 1 });
+      const query = {};
+      if (category) query.category = category;
+      modules = await Module.find(query).populate('category', 'name').sort({ order: 1 });
     }
 
     // Filter by unlock mode and approval status

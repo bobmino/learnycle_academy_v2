@@ -244,4 +244,20 @@ export const approvalService = {
   reject: (id, comment) => API.post(`/approvals/${id}/reject`, { comment })
 };
 
+export const categoryService = {
+  getAll: (params) => API.get('/categories', { params }),
+  getById: (id) => API.get(`/categories/${id}`),
+  create: (data) => API.post('/categories', data),
+  update: (id, data) => API.put(`/categories/${id}`, data),
+  delete: (id) => API.delete(`/categories/${id}`)
+};
+
+export const formationService = {
+  getAll: (params) => API.get('/formations', { params }),
+  getById: (id) => API.get(`/formations/${id}`),
+  create: (data) => API.post('/formations', data),
+  update: (id, data) => API.put(`/formations/${id}`, data),
+  delete: (id) => API.delete(`/formations/${id}`)
+};
+
 export default API;

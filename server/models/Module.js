@@ -46,6 +46,20 @@ const moduleSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  category: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    default: null
+  },
+  formation: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Formation',
+    default: null
+  },
+  autoUnlockOnProjectValidation: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now

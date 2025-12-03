@@ -33,6 +33,16 @@ const moduleApprovalSchema = new mongoose.Schema({
   approvedAt: {
     type: Date,
     default: null
+  },
+  triggeredBy: {
+    type: String,
+    enum: ['manual', 'project_validation'],
+    default: 'manual'
+  },
+  relatedProject: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Project',
+    default: null
   }
 });
 

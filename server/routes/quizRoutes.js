@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect, roleRequired } = require('../middleware/auth');
 const {
+  getAllQuizzes,
   getQuizzesByModule,
   getQuizById,
   createQuiz,
@@ -21,6 +22,9 @@ router.get('/analytics', protect, getQuizAnalytics);
 
 // Get student quiz results
 router.get('/results/student/:studentId', protect, getStudentQuizResults);
+
+// Get all quizzes - accessible to all authenticated users
+router.get('/', protect, getAllQuizzes);
 
 // Get quizzes by module - accessible to all authenticated users
 router.get('/module/:moduleId', protect, getQuizzesByModule);

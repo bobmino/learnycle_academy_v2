@@ -24,6 +24,24 @@ const quizSchema = new mongoose.Schema({
       ]
     }
   ],
+  category: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    default: null
+  },
+  isEmbedded: {
+    type: Boolean,
+    default: false
+  },
+  embeddedInLesson: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Lesson',
+    default: null
+  },
+  displayPosition: {
+    type: Number,
+    default: 0
+  },
   createdAt: {
     type: Date,
     default: Date.now

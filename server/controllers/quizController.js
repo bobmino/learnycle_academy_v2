@@ -11,7 +11,31 @@ const { createNotification, NOTIFICATION_TYPES } = require('../services/notifica
  */
 const getQuizzesByModule = async (req, res) => {
   try {
-    const quizzes = await Quiz.find({ module: req.params.moduleId });
+    const { category } = req.query;
+    const query = { module: req.params.moduleId };
+    if (category) query.category = category;
+    const quizzes = await Quiz.find(query).populate('category', 'name');
+    res.json(quizzes);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Get all quizzes
+ * @route   GET /api/quiz
+ * @access  Private
+ */
+const getAllQuizzes = async (req, res) => {
+  try {
+    const { category, module } = req.query;
+    const query = {};
+    if (category) query.category = category;
+    if (module) query.module = module;
+    const quizzes = await Quiz.find(query)
+      .populate('module', 'title')
+      .populate('category', 'name')
+      .sort({ createdAt: -1 });
     res.json(quizzes);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -356,6 +380,7 @@ const getQuizAnalytics = async (req, res) => {
 };
 
 module.exports = {
+  getAllQuizzes,
   getQuizzesByModule,
   getQuizById,
   createQuiz,

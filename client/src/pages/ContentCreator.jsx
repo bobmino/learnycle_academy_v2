@@ -10,6 +10,7 @@ import {
 } from '../services/api';
 import Breadcrumbs from '../components/Breadcrumbs';
 import BackButton from '../components/BackButton';
+import CategorySelector from '../components/CategorySelector';
 
 /**
  * Content Creator Page
@@ -32,23 +33,29 @@ const ContentCreator = () => {
     approvalRequired: false,
     projectRequired: false,
     isActive: true,
+    moduleCategory: null,
+    autoUnlockOnProjectValidation: false,
     // Lesson
     lessonTitle: '',
     lessonContent: '',
     lessonOrder: 1,
     selectedModule: '',
+    lessonCategory: null,
     // Quiz
     quizTitle: '',
     quizModule: '',
     questions: [{ questionText: '', options: [{ text: '', isCorrect: false }, { text: '', isCorrect: false }] }],
+    quizCategory: null,
     // Project
     projectName: '',
     projectDescription: '',
-    projectModule: '',
+    projectModules: [],
     projectType: 'project',
     deliverables: [],
     dueDate: '',
-    instructions: ''
+    instructions: '',
+    projectCategory: null,
+    autoUnlockNextOnValidation: false
   });
 
   useEffect(() => {
@@ -74,6 +81,26 @@ const ContentCreator = () => {
     }));
   };
 
+  const handleCategoryChange = (categoryId, fieldName) => {
+    setFormData(prev => ({
+      ...prev,
+      [fieldName]: categoryId
+    }));
+  };
+
+  const handleModuleToggle = (moduleId) => {
+    setFormData(prev => {
+      const currentModules = prev.projectModules || [];
+      const isSelected = currentModules.includes(moduleId);
+      return {
+        ...prev,
+        projectModules: isSelected
+          ? currentModules.filter(id => id !== moduleId)
+          : [...currentModules, moduleId]
+      };
+    });
+  };
+
   const handleCreateModule = async (e) => {
     e.preventDefault();
     try {
@@ -85,7 +112,9 @@ const ContentCreator = () => {
         unlockMode: formData.unlockMode,
         approvalRequired: formData.approvalRequired,
         projectRequired: formData.projectRequired,
-        isActive: formData.isActive
+        isActive: formData.isActive,
+        category: formData.moduleCategory,
+        autoUnlockOnProjectValidation: formData.autoUnlockOnProjectValidation
       });
       alert('Module créé avec succès');
       setFormData(prev => ({ ...prev, title: '', description: '', selectedModule: response.data._id }));
@@ -102,7 +131,8 @@ const ContentCreator = () => {
         module: formData.selectedModule,
         title: formData.lessonTitle,
         content: formData.lessonContent,
-        order: parseInt(formData.lessonOrder)
+        order: parseInt(formData.lessonOrder),
+        category: formData.lessonCategory
       });
       alert('Leçon créée avec succès');
       setFormData(prev => ({ ...prev, lessonTitle: '', lessonContent: '', lessonOrder: parseInt(prev.lessonOrder) + 1 }));
@@ -151,7 +181,8 @@ const ContentCreator = () => {
       await quizService.create({
         module: formData.quizModule,
         title: formData.quizTitle,
-        questions: formData.questions
+        questions: formData.questions,
+        category: formData.quizCategory
       });
       alert('Quiz créé avec succès');
       setFormData(prev => ({
@@ -170,11 +201,14 @@ const ContentCreator = () => {
       await projectService.create({
         name: formData.projectName,
         description: formData.projectDescription,
-        moduleId: formData.projectModule,
+        moduleIds: formData.projectModules.length > 0 ? formData.projectModules : undefined,
+        moduleId: formData.projectModules.length === 1 ? formData.projectModules[0] : undefined,
         type: formData.projectType,
         deliverables: formData.deliverables,
         dueDate: formData.dueDate || null,
-        instructions: formData.instructions
+        instructions: formData.instructions,
+        category: formData.projectCategory,
+        autoUnlockNextOnValidation: formData.autoUnlockNextOnValidation
       });
       alert('Projet créé avec succès');
       setFormData(prev => ({
@@ -358,6 +392,25 @@ const ContentCreator = () => {
                 </label>
               </div>
             </div>
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer mb-4">
+                <input
+                  type="checkbox"
+                  name="autoUnlockOnProjectValidation"
+                  checked={formData.autoUnlockOnProjectValidation}
+                  onChange={handleInputChange}
+                  className="rounded"
+                />
+                <span>Débloquer automatiquement le module suivant après validation du projet</span>
+              </label>
+            </div>
+            <CategorySelector
+              value={formData.moduleCategory}
+              onChange={(categoryId) => handleCategoryChange(categoryId, 'moduleCategory')}
+              type="module"
+              label="Catégorie"
+              className="mb-4"
+            />
             <button type="submit" className="btn-primary">
               Créer le Module
             </button>
@@ -523,6 +576,13 @@ const ContentCreator = () => {
                 </div>
               ))}
             </div>
+            <CategorySelector
+              value={formData.quizCategory}
+              onChange={(categoryId) => handleCategoryChange(categoryId, 'quizCategory')}
+              type="quiz"
+              label="Catégorie"
+              className="mb-4"
+            />
             <button type="submit" className="btn-primary">
               Créer le Quiz
             </button>
@@ -536,21 +596,23 @@ const ContentCreator = () => {
           <h2 className="section-subheader mb-4">Créer une Étude de Cas/Projet</h2>
           <form onSubmit={handleCreateProject} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Module *</label>
-              <select
-                name="projectModule"
-                value={formData.projectModule}
-                onChange={handleInputChange}
-                className="input-field"
-                required
-              >
-                <option value="">Sélectionner un module</option>
+              <label className="block text-sm font-medium mb-2">Modules * (peut être transversal)</label>
+              <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-300 rounded-md p-3 dark:border-gray-600">
                 {modules.map(module => (
-                  <option key={module._id} value={module._id}>
-                    {module.title}
-                  </option>
+                  <label key={module._id} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                    <input
+                      type="checkbox"
+                      checked={formData.projectModules.includes(module._id)}
+                      onChange={() => handleModuleToggle(module._id)}
+                      className="rounded"
+                    />
+                    <span className="text-gray-900 dark:text-white">{module.title}</span>
+                  </label>
                 ))}
-              </select>
+              </div>
+              {formData.projectModules.length === 0 && (
+                <p className="text-sm text-red-500 mt-1">Veuillez sélectionner au moins un module</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Nom du Projet *</label>
@@ -609,7 +671,26 @@ const ContentCreator = () => {
                 rows="4"
               />
             </div>
-            <button type="submit" className="btn-primary">
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer mb-4">
+                <input
+                  type="checkbox"
+                  name="autoUnlockNextOnValidation"
+                  checked={formData.autoUnlockNextOnValidation}
+                  onChange={handleInputChange}
+                  className="rounded"
+                />
+                <span>Débloquer automatiquement le module suivant après validation de ce projet</span>
+              </label>
+            </div>
+            <CategorySelector
+              value={formData.projectCategory}
+              onChange={(categoryId) => handleCategoryChange(categoryId, 'projectCategory')}
+              type="project"
+              label="Catégorie"
+              className="mb-4"
+            />
+            <button type="submit" className="btn-primary" disabled={formData.projectModules.length === 0}>
               Créer le Projet
             </button>
           </form>
