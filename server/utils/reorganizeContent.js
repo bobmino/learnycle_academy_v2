@@ -16,22 +16,30 @@ dotenv.config();
  */
 const reorganizeContent = async () => {
   try {
+    console.log('🔄 Starting reorganization process...');
+    
     // Connect to database if not already connected
     if (mongoose.connection.readyState !== 1) {
+      console.log('📡 Connecting to MongoDB...');
       await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/learncycle');
       console.log('✅ Connected to MongoDB');
+    } else {
+      console.log('✅ Already connected to MongoDB');
     }
 
     // Get admin and teacher users
+    console.log('👤 Looking for admin and teacher users...');
     const admin = await User.findOne({ role: 'admin' });
     const teacher = await User.findOne({ role: 'teacher' });
     
     if (!admin) {
       console.error('❌ Admin user not found.');
-      return { success: false, message: 'Admin user not found' };
+      return { success: false, message: 'Admin user not found', error: 'No admin user exists in database' };
     }
+    console.log(`✅ Found admin: ${admin.email}`);
 
     const assignedTeacher = teacher || admin; // Use teacher if exists, otherwise admin
+    console.log(`✅ Using teacher: ${assignedTeacher.email}`);
 
     // Get or create category "Économie"
     let economyCategory = await Category.findOne({ name: 'Économie', type: 'module' });
@@ -118,23 +126,36 @@ const reorganizeContent = async () => {
         : `# ${lessonTitle}\n\n${oldModule.description || 'Contenu de la leçon'}`;
 
       // Create a main lesson from the module
-      const mainLesson = await Lesson.create({
-        module: economyModule._id,
-        title: `Leçon ${lessonOrder}: ${lessonTitle}`,
-        content: lessonContent,
-        order: lessonOrder,
-        category: economyLessonCategory?._id || null,
-        createdBy: assignedTeacher._id
-      });
-      
-      console.log(`✅ Created lesson: ${mainLesson.title}`);
-      lessonOrder++;
+      try {
+        console.log(`📝 Creating lesson ${lessonOrder}: ${lessonTitle}...`);
+        const mainLesson = await Lesson.create({
+          module: economyModule._id,
+          title: `Leçon ${lessonOrder}: ${lessonTitle}`,
+          content: lessonContent,
+          order: lessonOrder,
+          category: economyLessonCategory?._id || null,
+          createdBy: assignedTeacher._id
+        });
+        
+        console.log(`✅ Created lesson: ${mainLesson.title}`);
+        lessonOrder++;
+      } catch (error) {
+        console.error(`❌ Error creating lesson ${lessonOrder}: ${lessonTitle}`, error);
+        throw new Error(`Failed to create lesson "${lessonTitle}": ${error.message}`);
+      }
 
       // Optionally, you can also create individual lessons from old lessons
       // But for now, we'll just create one main lesson per old module
     }
 
+    // Ensure economyModule exists before creating case studies
+    if (!economyModule || !economyModule._id) {
+      throw new Error('Économie module must be created before case studies');
+    }
+    console.log(`✅ Economy module ID: ${economyModule._id}`);
+
     // Get or create category for case studies
+    console.log('📂 Looking for or creating Études de Cas category...');
     let caseStudyCategory = await Category.findOne({ name: 'Études de Cas', type: 'project' });
     if (!caseStudyCategory) {
       try {
@@ -154,9 +175,12 @@ const reorganizeContent = async () => {
           throw new Error(`Failed to create or find Études de Cas category: ${error.message}`);
         }
       }
+    } else {
+      console.log('✅ Found existing Études de Cas category');
     }
 
-    // Create the 3 case study projects
+    // Create the 3 case study projects (using economyModule._id which is now guaranteed to exist)
+    console.log('📋 Preparing case studies...');
     const caseStudies = [
       {
         name: 'Étude de Cas 1: Café',
@@ -261,32 +285,53 @@ const reorganizeContent = async () => {
     ];
 
     // Create or update case studies
+    console.log('📋 Creating/updating case studies...');
     for (const caseStudy of caseStudies) {
-      let project = await Project.findOne({ name: caseStudy.name });
-      
-      if (project) {
-        console.log(`ℹ️  Case study "${caseStudy.name}" already exists. Updating...`);
-        project.description = caseStudy.description;
-        project.modules = caseStudy.modules;
-        project.type = caseStudy.type;
-        project.instructions = caseStudy.instructions;
-        project.deliverables = caseStudy.deliverables;
-        project.category = caseStudyCategory._id;
-        await project.save();
-      } else {
-        project = await Project.create({
-          name: caseStudy.name,
-          description: caseStudy.description,
-          modules: caseStudy.modules,
-          type: caseStudy.type,
-          instructions: caseStudy.instructions,
-          deliverables: caseStudy.deliverables,
-          category: caseStudyCategory._id,
-          isTransversal: false,
-          status: 'active',
-          createdBy: assignedTeacher._id
-        });
-        console.log(`✅ Created case study: ${caseStudy.name}`);
+      try {
+        // Validate modules array
+        if (!caseStudy.modules || !Array.isArray(caseStudy.modules) || caseStudy.modules.length === 0) {
+          throw new Error(`Case study "${caseStudy.name}" must have at least one module assigned`);
+        }
+        
+        // Validate that all module IDs are valid ObjectIds
+        for (const moduleId of caseStudy.modules) {
+          if (!mongoose.Types.ObjectId.isValid(moduleId)) {
+            throw new Error(`Invalid module ID in case study "${caseStudy.name}": ${moduleId}`);
+          }
+        }
+        
+        let project = await Project.findOne({ name: caseStudy.name });
+        
+        if (project) {
+          console.log(`ℹ️  Case study "${caseStudy.name}" already exists. Updating...`);
+          project.description = caseStudy.description;
+          project.modules = caseStudy.modules;
+          project.type = caseStudy.type || 'case-study';
+          project.instructions = caseStudy.instructions || '';
+          project.deliverables = caseStudy.deliverables || [];
+          project.category = caseStudyCategory?._id || null;
+          project.isTransversal = caseStudy.modules.length > 1;
+          await project.save();
+          console.log(`✅ Updated case study: ${caseStudy.name}`);
+        } else {
+          console.log(`📝 Creating new case study: ${caseStudy.name}...`);
+          project = await Project.create({
+            name: caseStudy.name,
+            description: caseStudy.description,
+            modules: caseStudy.modules, // This is required
+            type: caseStudy.type || 'case-study',
+            instructions: caseStudy.instructions || '',
+            deliverables: caseStudy.deliverables || [],
+            category: caseStudyCategory?._id || null,
+            isTransversal: caseStudy.modules.length > 1,
+            status: 'active',
+            createdBy: assignedTeacher._id
+          });
+          console.log(`✅ Created case study: ${caseStudy.name}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error creating/updating case study "${caseStudy.name}":`, error);
+        throw new Error(`Failed to create/update case study "${caseStudy.name}": ${error.message}`);
       }
     }
 
@@ -341,10 +386,25 @@ const reorganizeContent = async () => {
 
   } catch (error) {
     console.error('❌ Error reorganizing content:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    // More detailed error information
+    let errorDetails = error.message;
+    if (error.errors) {
+      const validationErrors = Object.keys(error.errors).map(key => ({
+        field: key,
+        message: error.errors[key].message
+      }));
+      errorDetails = `Validation errors: ${JSON.stringify(validationErrors)}`;
+    }
+    
     return {
       success: false,
       message: 'Error reorganizing content',
-      error: error.message
+      error: errorDetails,
+      errorType: error.name
     };
   }
 };
