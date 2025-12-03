@@ -15,6 +15,7 @@ import ProgressBar from '../components/ProgressBar';
 import GradeDisplay from '../components/GradeDisplay';
 import Breadcrumbs from '../components/Breadcrumbs';
 import BackButton from '../components/BackButton';
+import EmbeddedQuiz from '../components/EmbeddedQuiz';
 
 /**
  * Module Detail Page
@@ -34,6 +35,7 @@ const ModuleDetail = () => {
   const [currentQuiz, setCurrentQuiz] = useState(null);
   const [quizAnswers, setQuizAnswers] = useState({});
   const [quizResult, setQuizResult] = useState(null);
+  const [embeddedQuizzes, setEmbeddedQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('lessons'); // 'lessons', 'quiz', 'discussion', 'projects'
   const [previousModule, setPreviousModule] = useState(null);
@@ -54,8 +56,32 @@ const ModuleDetail = () => {
       ]);
       
       setModule(moduleRes.data.module);
-      setLessons(moduleRes.data.lessons);
+      const lessonsData = moduleRes.data.lessons || [];
+      setLessons(lessonsData);
       setProgress(progressRes.data);
+      
+      // Fetch embedded quizzes for lessons
+      const embeddedQuizzesData = [];
+      for (const lesson of lessonsData) {
+        if (lesson.embeddedQuizzes && lesson.embeddedQuizzes.length > 0) {
+          for (const embeddedQuiz of lesson.embeddedQuizzes) {
+            if (embeddedQuiz.quiz && embeddedQuiz.quiz._id) {
+              try {
+                const quizRes = await quizService.getById(embeddedQuiz.quiz._id);
+                embeddedQuizzesData.push({
+                  lessonId: lesson._id,
+                  quiz: quizRes.data,
+                  position: embeddedQuiz.position || 0,
+                  displayAfter: embeddedQuiz.displayAfter || false
+                });
+              } catch (error) {
+                console.error(`Failed to fetch embedded quiz ${embeddedQuiz.quiz._id}:`, error);
+              }
+            }
+          }
+        }
+      }
+      setEmbeddedQuizzes(embeddedQuizzesData);
       setPreviousModule(moduleRes.data.previousModule);
       setNextModule(moduleRes.data.nextModule);
       setIsApproved(moduleRes.data.isApproved);
@@ -445,20 +471,75 @@ const ModuleDetail = () => {
                     </div>
                   </div>
 
-                  {/* Lesson Content */}
+                  {/* Lesson Content with Embedded Quizzes */}
                   <div className="prose dark:prose-invert max-w-none mb-6">
-                    <div 
-                      className="markdown-content"
-                      dangerouslySetInnerHTML={{ 
-                        __html: currentLesson.content
-                          .replace(/#{3}\s(.+)/g, '<h3>$1</h3>')
-                          .replace(/#{2}\s(.+)/g, '<h2>$1</h2>')
-                          .replace(/#{1}\s(.+)/g, '<h1>$1</h1>')
-                          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                          .replace(/\*(.+?)\*/g, '<em>$1</em>')
-                          .replace(/\n/g, '<br />')
-                      }}
-                    />
+                    {(() => {
+                      // Get embedded quizzes for this lesson
+                      const lessonEmbeddedQuizzes = embeddedQuizzes.filter(
+                        eq => eq.lessonId === currentLesson._id
+                      );
+                      
+                      // Separate quizzes by position (during vs after)
+                      const duringQuizzes = lessonEmbeddedQuizzes
+                        .filter(eq => !eq.displayAfter)
+                        .sort((a, b) => a.position - b.position);
+                      const afterQuizzes = lessonEmbeddedQuizzes
+                        .filter(eq => eq.displayAfter);
+                      
+                      // Split content by position markers if needed
+                      let contentParts = [currentLesson.content];
+                      
+                      // Render content with embedded quizzes
+                      return (
+                        <div className="space-y-6">
+                          {/* Content before quizzes */}
+                          <div 
+                            className="markdown-content"
+                            dangerouslySetInnerHTML={{ 
+                              __html: currentLesson.content
+                                .replace(/#{3}\s(.+)/g, '<h3>$1</h3>')
+                                .replace(/#{2}\s(.+)/g, '<h2>$1</h2>')
+                                .replace(/#{1}\s(.+)/g, '<h1>$1</h1>')
+                                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                                .replace(/\n/g, '<br />')
+                            }}
+                          />
+                          
+                          {/* Embedded quizzes during lesson */}
+                          {duringQuizzes.map((eq, index) => (
+                            <EmbeddedQuiz
+                              key={`during-${eq.quiz._id}-${index}`}
+                              quiz={eq.quiz}
+                              onComplete={(score) => {
+                                console.log(`Quiz completed with score: ${score}%`);
+                                // Refresh progress if needed
+                                fetchModuleData();
+                              }}
+                            />
+                          ))}
+                          
+                          {/* Embedded quizzes after lesson */}
+                          {afterQuizzes.length > 0 && (
+                            <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+                              <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+                                Quiz d'approfondissement
+                              </h3>
+                              {afterQuizzes.map((eq, index) => (
+                                <EmbeddedQuiz
+                                  key={`after-${eq.quiz._id}-${index}`}
+                                  quiz={eq.quiz}
+                                  onComplete={(score) => {
+                                    console.log(`Quiz completed with score: ${score}%`);
+                                    fetchModuleData();
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* PDF Download */}
