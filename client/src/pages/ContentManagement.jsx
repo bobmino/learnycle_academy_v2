@@ -204,14 +204,116 @@ const ContentManagement = () => {
       if (type === 'module') {
         await moduleService.update(item._id, { isActive: !item.isActive });
         setModules(modules.map(m => m._id === item._id ? { ...m, isActive: !m.isActive } : m));
+        fetchData(); // Refresh data
       } else if (type === 'project') {
         const newStatus = item.status === 'active' ? 'archived' : 'active';
         await projectService.update(item._id, { status: newStatus });
         setProjects(projects.map(p => p._id === item._id ? { ...p, status: newStatus } : p));
+        fetchData(); // Refresh data
       }
+      alert('Statut mis à jour avec succès');
     } catch (error) {
       alert('Erreur: ' + (error.response?.data?.message || error.message));
     }
+  };
+
+  const startEdit = (item, type) => {
+    setEditingType(type);
+    setEditingItem(item);
+    
+    if (type === 'module') {
+      setEditFormData({
+        title: item.title,
+        description: item.description,
+        caseStudyType: item.caseStudyType || 'none',
+        order: item.order || 0,
+        unlockMode: item.unlockMode || 'auto',
+        approvalRequired: item.approvalRequired || false,
+        projectRequired: item.projectRequired || false,
+        isActive: item.isActive !== undefined ? item.isActive : true,
+        category: item.category?._id || item.category || null,
+        autoUnlockOnProjectValidation: item.autoUnlockOnProjectValidation || false
+      });
+    } else if (type === 'lesson') {
+      setEditFormData({
+        title: item.title,
+        content: item.content,
+        order: item.order || 0,
+        module: item.module?._id || item.module || item.moduleId,
+        category: item.category?._id || item.category || null
+      });
+    } else if (type === 'quiz') {
+      setEditFormData({
+        title: item.title,
+        module: item.module?._id || item.module || item.moduleId,
+        questions: item.questions || [],
+        category: item.category?._id || item.category || null
+      });
+    } else if (type === 'project') {
+      setEditFormData({
+        name: item.name,
+        description: item.description,
+        type: item.type || 'project',
+        modules: item.modules?.map(m => m._id || m) || [],
+        instructions: item.instructions || '',
+        deliverables: item.deliverables || [],
+        dueDate: item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : '',
+        category: item.category?._id || item.category || null,
+        status: item.status || 'active',
+        autoUnlockNextOnValidation: item.autoUnlockNextOnValidation || false
+      });
+    }
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingType === 'module') {
+        await moduleService.update(editingItem._id, editFormData);
+        alert('Module modifié avec succès');
+      } else if (editingType === 'lesson') {
+        await lessonService.update(editingItem._id, editFormData);
+        alert('Leçon modifiée avec succès');
+      } else if (editingType === 'quiz') {
+        await quizService.update(editingItem._id, editFormData);
+        alert('Quiz modifié avec succès');
+      } else if (editingType === 'project') {
+        const projectData = {
+          ...editFormData,
+          modules: editFormData.modules
+        };
+        await projectService.update(editingItem._id, projectData);
+        alert('Projet modifié avec succès');
+      }
+      
+      setEditingItem(null);
+      setEditingType(null);
+      setEditFormData({});
+      fetchData(); // Refresh data
+    } catch (error) {
+      alert('Erreur: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingItem(null);
+    setEditingType(null);
+    setEditFormData({});
+  };
+
+  const handleEditInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleEditCategoryChange = (categoryId) => {
+    setEditFormData(prev => ({
+      ...prev,
+      category: categoryId
+    }));
   };
 
   if (loading && modules.length === 0 && lessons.length === 0 && quizzes.length === 0 && projects.length === 0) {
@@ -616,6 +718,316 @@ const ContentManagement = () => {
             {projects.length === 0 && (
               <p className="text-center py-8 text-gray-500">Aucun projet trouvé</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingItem && editingType && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 my-8">
+            <h3 className="text-xl font-bold mb-4">
+              Modifier {editingType === 'module' ? 'le Module' : editingType === 'lesson' ? 'la Leçon' : editingType === 'quiz' ? 'le Quiz' : 'le Projet'}
+            </h3>
+            
+            <form onSubmit={handleUpdate} className="space-y-4">
+              {editingType === 'module' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Titre *</label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={editFormData.title || ''}
+                      onChange={handleEditInputChange}
+                      className="input-field"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Description *</label>
+                    <textarea
+                      name="description"
+                      value={editFormData.description || ''}
+                      onChange={handleEditInputChange}
+                      className="input-field"
+                      rows="4"
+                      required
+                    />
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Ordre</label>
+                      <input
+                        type="number"
+                        name="order"
+                        value={editFormData.order || 0}
+                        onChange={handleEditInputChange}
+                        className="input-field"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Mode de déblocage</label>
+                      <select
+                        name="unlockMode"
+                        value={editFormData.unlockMode || 'auto'}
+                        onChange={handleEditInputChange}
+                        className="input-field"
+                      >
+                        <option value="auto">Automatique</option>
+                        <option value="approval">Approbation requise</option>
+                      </select>
+                    </div>
+                  </div>
+                  <CategorySelector
+                    value={editFormData.category}
+                    onChange={handleEditCategoryChange}
+                    type="module"
+                    label="Catégorie"
+                  />
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="approvalRequired"
+                        checked={editFormData.approvalRequired || false}
+                        onChange={handleEditInputChange}
+                        className="rounded"
+                      />
+                      <span>Approbation requise</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="isActive"
+                        checked={editFormData.isActive !== undefined ? editFormData.isActive : true}
+                        onChange={handleEditInputChange}
+                        className="rounded"
+                      />
+                      <span>Actif</span>
+                    </label>
+                  </div>
+                </>
+              )}
+
+              {editingType === 'lesson' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Titre *</label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={editFormData.title || ''}
+                      onChange={handleEditInputChange}
+                      className="input-field"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Module *</label>
+                    <select
+                      name="module"
+                      value={editFormData.module || ''}
+                      onChange={handleEditInputChange}
+                      className="input-field"
+                      required
+                    >
+                      <option value="">Sélectionner un module</option>
+                      {modules.map(m => (
+                        <option key={m._id} value={m._id}>
+                          {m.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Contenu *</label>
+                    <textarea
+                      name="content"
+                      value={editFormData.content || ''}
+                      onChange={handleEditInputChange}
+                      className="input-field"
+                      rows="8"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Ordre</label>
+                    <input
+                      type="number"
+                      name="order"
+                      value={editFormData.order || 0}
+                      onChange={handleEditInputChange}
+                      className="input-field"
+                    />
+                  </div>
+                  <CategorySelector
+                    value={editFormData.category}
+                    onChange={handleEditCategoryChange}
+                    type="lesson"
+                    label="Catégorie"
+                  />
+                </>
+              )}
+
+              {editingType === 'quiz' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Titre *</label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={editFormData.title || ''}
+                      onChange={handleEditInputChange}
+                      className="input-field"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Module *</label>
+                    <select
+                      name="module"
+                      value={editFormData.module || ''}
+                      onChange={handleEditInputChange}
+                      className="input-field"
+                      required
+                    >
+                      <option value="">Sélectionner un module</option>
+                      {modules.map(m => (
+                        <option key={m._id} value={m._id}>
+                          {m.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <CategorySelector
+                    value={editFormData.category}
+                    onChange={handleEditCategoryChange}
+                    type="quiz"
+                    label="Catégorie"
+                  />
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                      Questions: {editFormData.questions?.length || 0}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Pour modifier les questions, veuillez utiliser le formulaire de création de quiz.
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {editingType === 'project' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Nom *</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={editFormData.name || ''}
+                      onChange={handleEditInputChange}
+                      className="input-field"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Description *</label>
+                    <textarea
+                      name="description"
+                      value={editFormData.description || ''}
+                      onChange={handleEditInputChange}
+                      className="input-field"
+                      rows="4"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Type</label>
+                    <select
+                      name="type"
+                      value={editFormData.type || 'project'}
+                      onChange={handleEditInputChange}
+                      className="input-field"
+                    >
+                      <option value="project">Projet</option>
+                      <option value="case-study">Étude de Cas</option>
+                      <option value="exam">Examen</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Modules</label>
+                    <div className="max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded p-2">
+                      {modules.map(m => (
+                        <label key={m._id} className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={(editFormData.modules || []).includes(m._id)}
+                            onChange={(e) => {
+                              const currentModules = editFormData.modules || [];
+                              if (e.target.checked) {
+                                setEditFormData(prev => ({
+                                  ...prev,
+                                  modules: [...currentModules, m._id]
+                                }));
+                              } else {
+                                setEditFormData(prev => ({
+                                  ...prev,
+                                  modules: currentModules.filter(id => id !== m._id)
+                                }));
+                              }
+                            }}
+                            className="rounded"
+                          />
+                          <span>{m.title}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Instructions</label>
+                    <textarea
+                      name="instructions"
+                      value={editFormData.instructions || ''}
+                      onChange={handleEditInputChange}
+                      className="input-field"
+                      rows="4"
+                    />
+                  </div>
+                  <CategorySelector
+                    value={editFormData.category}
+                    onChange={handleEditCategoryChange}
+                    type="project"
+                    label="Catégorie"
+                  />
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Date limite</label>
+                    <input
+                      type="date"
+                      name="dueDate"
+                      value={editFormData.dueDate || ''}
+                      onChange={handleEditInputChange}
+                      className="input-field"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="flex gap-4 justify-end pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="btn-secondary"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

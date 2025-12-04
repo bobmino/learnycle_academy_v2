@@ -56,9 +56,16 @@ const Navbar = () => {
                 <Link to="/dashboard" className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
                   {t('nav.dashboard')}
                 </Link>
-                <Link to="/modules" className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
-                  {t('nav.modules')}
-                </Link>
+                {(user?.role === 'admin' || user?.role === 'teacher') && (
+                  <Link to="/content-management" className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+                    Management
+                  </Link>
+                )}
+                {user?.role === 'student' && (
+                  <Link to="/modules" className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+                    {t('nav.modules')}
+                  </Link>
+                )}
                 <Link to="/teamwork" className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
                   {t('nav.teamwork')}
                 </Link>
