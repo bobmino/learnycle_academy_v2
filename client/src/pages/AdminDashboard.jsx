@@ -85,9 +85,11 @@ const AdminDashboard = () => {
 
   const handleReorganizeContent = async () => {
     if (!window.confirm(
-      '⚠️ ATTENTION : Cette action va réorganiser votre contenu.\n\n' +
-      'Les 10 modules existants seront convertis en leçons dans un module "Économie".\n' +
-      'Les études de cas seront créées comme projets.\n\n' +
+      '📚 Création de la formation "Projet clé en main"\n\n' +
+      'Cette action va créer :\n' +
+      '- Un module "Économie" avec toutes les leçons existantes\n' +
+      '- 3 projets d\'études de cas (Café, Restaurant, Hôtel)\n' +
+      '- La formation "Projet clé en main"\n\n' +
       'Voulez-vous continuer ?'
     )) {
       return;
@@ -101,8 +103,7 @@ const AdminDashboard = () => {
       setReorganizeMessage(
         `✅ ${response.data.message}. ` +
         `Module Économie créé avec ${response.data.economyModule?.lessonsCount || 0} leçons. ` +
-        `${response.data.lessonsMoved || 0} leçons déplacées. ` +
-        `${response.data.caseStudies || 0} études de cas créées.`
+        `${response.data.projects || 0} projets d'études de cas créés.`
       );
       // Refresh after 3 seconds
       setTimeout(() => {
@@ -141,15 +142,15 @@ const AdminDashboard = () => {
         <div className="space-y-4">
           <div>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              <strong>⚠️ Action importante :</strong> Ce script va réorganiser votre contenu existant :
+              <strong>📚 Création de la formation :</strong> Ce script va créer directement la formation "Projet clé en main" :
             </p>
             <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4 space-y-2">
-              <li>Les 10 modules existants seront convertis en <strong>leçons</strong> dans un nouveau module "Économie"</li>
-              <li>Les études de cas (Café, Restaurant, Hôtel) seront créées comme <strong>projets</strong> numérotés</li>
-              <li>Une formation "Projet clé en main" sera créée/mise à jour avec le module Économie</li>
+              <li>Création d'un module <strong>"Économie"</strong> regroupant toutes les leçons existantes</li>
+              <li>Création de 3 projets d'études de cas : <strong>Café, Restaurant, Hôtel</strong></li>
+              <li>Création de la formation <strong>"Projet clé en main"</strong> avec le module Économie</li>
             </ul>
-            <p className="text-sm text-amber-600 dark:text-amber-400 mb-4">
-              <strong>Note :</strong> Les anciens modules ne seront pas supprimés, mais ne seront plus utilisés dans la nouvelle structure.
+            <p className="text-sm text-green-600 dark:text-green-400 mb-4">
+              <strong>✅ Simple et direct :</strong> Aucune conversion complexe, juste création de la nouvelle structure.
             </p>
             <button
               onClick={handleReorganizeContent}

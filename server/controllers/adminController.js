@@ -2,6 +2,7 @@ const { initDatabase } = require('../utils/initDatabase');
 const { organizeFormation } = require('../utils/organizeFormation');
 const { reorganizeContent } = require('../utils/reorganizeContent');
 const { reorganizeContentSimple } = require('../utils/reorganizeContentSimple');
+const { createFormationDirect } = require('../utils/createFormationDirect');
 
 /**
  * @desc    Initialize database with default data
@@ -62,37 +63,28 @@ const organizeFormationContent = async (req, res) => {
  */
 const reorganizeContentData = async (req, res) => {
   try {
-    console.log('🔄 Starting content reorganization (simple method)...');
+    console.log('🔄 Creating formation directly...');
     console.log('Request user:', req.user?.email, req.user?.role);
     
-    // Use the simple reorganization method that just moves existing content
-    const result = await reorganizeContentSimple();
+    // Use the direct creation method - simple and straightforward
+    const result = await createFormationDirect();
     
     if (result.success) {
-      console.log('✅ Reorganization successful:', result.message);
+      console.log('✅ Formation created successfully:', result.message);
       res.json({
         message: result.message,
         economyModule: result.economyModule,
-        lessonsMoved: result.lessonsMoved,
-        caseStudies: result.caseStudies,
-        caseStudyNames: result.caseStudyNames
+        projects: result.projects,
+        projectNames: result.projectNames
       });
     } else {
-      console.error('❌ Reorganization failed:', result.message);
+      console.error('❌ Formation creation failed:', result.message);
       console.error('Error details:', result.error);
-      console.error('Error type:', result.errorType);
       
-      // Return detailed error information
-      const errorResponse = {
-        message: result.message || 'Error reorganizing content',
+      res.status(400).json({
+        message: result.message || 'Error creating formation',
         error: result.error || 'Unknown error'
-      };
-      
-      if (result.errorType) {
-        errorResponse.errorType = result.errorType;
-      }
-      
-      res.status(400).json(errorResponse);
+      });
     }
   } catch (error) {
     console.error('❌ Exception in reorganizeContentData:', error);
@@ -115,7 +107,7 @@ const reorganizeContentData = async (req, res) => {
     }
     
     res.status(500).json({ 
-      message: 'Failed to reorganize content', 
+      message: 'Failed to create formation', 
       error: error.message || 'Internal server error',
       errorType: error.name,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
