@@ -36,15 +36,12 @@ const categorySchema = new mongoose.Schema({
   }
 });
 
-// Update updatedAt before saving
-categorySchema.pre('save', function(next) {
+categorySchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });
 
-// Index for efficient queries
 categorySchema.index({ type: 1 });
 categorySchema.index({ name: 1, type: 1 }, { unique: true });
 
 module.exports = mongoose.model('Category', categorySchema);
-
