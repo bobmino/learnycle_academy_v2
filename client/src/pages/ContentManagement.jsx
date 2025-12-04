@@ -7,7 +7,8 @@ import {
   lessonService,
   quizService,
   projectService,
-  categoryService
+  categoryService,
+  adminService
 } from '../services/api';
 import Breadcrumbs from '../components/Breadcrumbs';
 import BackButton from '../components/BackButton';
@@ -212,11 +213,50 @@ const ContentManagement = () => {
       <BackButton />
 
       <div className="mb-6">
-        <h1 className="section-header mb-4">Gestion du Contenu</h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Créez, modifiez, triez et supprimez vos modules, leçons, quiz et projets
-        </p>
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h1 className="section-header mb-2">Gestion du Contenu</h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Hiérarchie : <strong>Formation</strong> → <strong>Module</strong> → <strong>Leçons/Quiz/Projets</strong>
+            </p>
+          </div>
+          <Link to="/category-management" className="btn-secondary">
+            Gérer les Catégories
+          </Link>
+        </div>
       </div>
+
+      {/* Admin Actions */}
+      {user?.role === 'admin' && (
+        <div className="card mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+          <h3 className="text-lg font-bold mb-2 text-amber-800 dark:text-amber-200">⚠️ Actions Administrateur</h3>
+          <p className="text-sm text-amber-700 dark:text-amber-300 mb-4">
+            Supprimer tous les modules (sauf ceux liés aux projets/études de cas). 
+            Cette action supprimera également toutes les leçons et quiz associés.
+          </p>
+          <button
+            onClick={async () => {
+              if (!window.confirm(
+                '⚠️ ATTENTION : Cette action va supprimer TOUS les modules (sauf ceux liés aux projets).\n\n' +
+                'Les leçons et quiz associés seront également supprimés.\n\n' +
+                'Cette action est IRRÉVERSIBLE. Voulez-vous continuer ?'
+              )) {
+                return;
+              }
+              try {
+                const response = await adminService.deleteAllModules();
+                alert(`✅ ${response.data.message}\n${response.data.deletedModules} modules supprimés.`);
+                fetchData();
+              } catch (error) {
+                alert('Erreur: ' + (error.response?.data?.message || error.message));
+              }
+            }}
+            className="btn-danger"
+          >
+            Supprimer tous les modules
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="mb-6 border-b border-gray-200 dark:border-gray-700">

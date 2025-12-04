@@ -13,5 +13,9 @@ router.post('/init-database', initializeDatabase);
 // Organize content into "Projet clé en main" formation
 router.post('/organize-formation', organizeFormationContent);
 
+// Delete all modules (except those linked to projects)
+const { deleteAllModules } = require('../controllers/adminController');
+router.post('/delete-modules', deleteAllModules);
+
 module.exports = router;
 

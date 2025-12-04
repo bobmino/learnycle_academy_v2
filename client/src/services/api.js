@@ -174,7 +174,8 @@ export const userService = {
 };
 
 export const adminService = {
-  initializeDatabase: () => API.post('/admin/init-database')
+  initializeDatabase: () => API.post('/admin/init-database'),
+  deleteAllModules: () => API.post('/admin/delete-modules')
 };
 
 export const groupService = {
