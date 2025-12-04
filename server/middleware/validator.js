@@ -37,7 +37,15 @@ const moduleSchema = Joi.object({
   title: Joi.string().min(3).max(200).required(),
   description: Joi.string().min(10).required(),
   caseStudyType: Joi.string().valid('none', 'cafe', 'restaurant', 'hotel').optional(),
-  order: Joi.number().optional()
+  order: Joi.number().optional(),
+  unlockMode: Joi.string().valid('auto', 'approval').optional(),
+  approvalRequired: Joi.boolean().optional(),
+  projectRequired: Joi.boolean().optional(),
+  isActive: Joi.boolean().optional(),
+  category: Joi.string().allow(null, '').optional(),
+  formation: Joi.string().allow(null, '').optional(),
+  autoUnlockOnProjectValidation: Joi.boolean().optional(),
+  assignToTeacher: Joi.string().allow(null, '').optional()
 });
 
 const lessonSchema = Joi.object({

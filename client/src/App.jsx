@@ -25,6 +25,7 @@ import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
 import Approvals from './pages/Approvals';
 import ContentCreator from './pages/ContentCreator';
+import ContentManagement from './pages/ContentManagement';
 import Analytics from './pages/Analytics';
 
 import './index.css';
@@ -165,6 +166,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <ContentCreator />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/content-management"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <ContentManagement />
                   </ProtectedRoute>
                 }
               />

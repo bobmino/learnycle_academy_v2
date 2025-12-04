@@ -141,6 +141,7 @@ export const lessonService = {
 };
 
 export const quizService = {
+  getAll: (params) => API.get('/quiz', { params }),
   getByModule: (moduleId) => API.get(`/quiz/module/${moduleId}`),
   getById: (id) => API.get(`/quiz/${id}`),
   create: (quizData) => API.post('/quiz', quizData),
