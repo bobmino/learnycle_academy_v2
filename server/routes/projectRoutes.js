@@ -31,8 +31,8 @@ router.post('/', roleRequired('teacher', 'admin'), createProject);
 // Update project (teacher/admin)
 router.put('/:id', roleRequired('teacher', 'admin'), updateProject);
 
-// Delete project (admin only)
-router.delete('/:id', roleRequired('admin'), deleteProject);
+// Delete project (admin or teacher who created it)
+router.delete('/:id', deleteProject);
 
 // Submit project (student)
 router.post('/:id/submit', uploadProject.array('files', 10), submitProject);

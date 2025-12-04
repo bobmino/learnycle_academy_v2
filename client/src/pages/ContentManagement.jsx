@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   moduleService,
   lessonService,
@@ -12,6 +12,7 @@ import {
 } from '../services/api';
 import Breadcrumbs from '../components/Breadcrumbs';
 import BackButton from '../components/BackButton';
+import CategorySelector from '../components/CategorySelector';
 
 /**
  * Content Management Page
@@ -33,15 +34,29 @@ const ContentManagement = () => {
   const [sortBy, setSortBy] = useState('order'); // 'order', 'title', 'createdAt'
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc', 'desc'
   const [editingItem, setEditingItem] = useState(null);
+  const [editingType, setEditingType] = useState(null); // 'module', 'lesson', 'quiz', 'project'
   const [showDeleteModal, setShowDeleteModal] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
 
   useEffect(() => {
     fetchCategories();
   }, []);
 
   useEffect(() => {
+    if (activeTab === 'modules' || activeTab === 'projects') {
+      fetchModulesForEdit();
+    }
     fetchData();
   }, [activeTab, selectedCategory, sortBy, sortOrder]);
+
+  const fetchModulesForEdit = async () => {
+    try {
+      const response = await moduleService.getAll();
+      setModules(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch modules for edit:', error);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -385,16 +400,20 @@ const ContentManagement = () => {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        <Link to={`/content-creator?edit=module&id=${module._id}`} className="btn-secondary text-sm px-3 py-1">
+                        <button
+                          onClick={() => startEdit(module, 'module')}
+                          className="btn-secondary text-sm px-3 py-1"
+                          disabled={user?.role === 'teacher' && module.createdBy !== user?._id && module.createdBy?._id !== user?._id}
+                        >
                           Modifier
-                        </Link>
+                        </button>
                         <button
                           onClick={() => handleToggleActive('module', module)}
                           className="btn-secondary text-sm px-3 py-1"
                         >
                           {module.isActive ? 'Désactiver' : 'Activer'}
                         </button>
-                        {(user?.role === 'admin' || (user?.role === 'teacher' && module.createdBy === user?._id)) && (
+                        {(user?.role === 'admin' || (user?.role === 'teacher' && (module.createdBy?._id === user?._id || module.createdBy === user?._id))) && (
                           <button
                             onClick={() => setShowDeleteModal({ type: 'module', id: module._id, name: module.title })}
                             className="btn-danger text-sm px-3 py-1"
@@ -443,10 +462,14 @@ const ContentManagement = () => {
                     <td className="px-4 py-3 text-sm">{lesson.order || 0}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        <Link to={`/content-creator?edit=lesson&id=${lesson._id}`} className="btn-secondary text-sm px-3 py-1">
+                        <button
+                          onClick={() => startEdit(lesson, 'lesson')}
+                          className="btn-secondary text-sm px-3 py-1"
+                          disabled={user?.role === 'teacher' && lesson.createdBy !== user?._id}
+                        >
                           Modifier
-                        </Link>
-                        {(user?.role === 'admin' || (user?.role === 'teacher' && lesson.createdBy === user?._id)) && (
+                        </button>
+                        {(user?.role === 'admin' || (user?.role === 'teacher' && (lesson.createdBy?._id === user?._id || lesson.createdBy === user?._id))) && (
                           <button
                             onClick={() => setShowDeleteModal({ type: 'lesson', id: lesson._id, name: lesson.title })}
                             className="btn-danger text-sm px-3 py-1"
@@ -495,10 +518,14 @@ const ContentManagement = () => {
                     <td className="px-4 py-3 text-sm">{quiz.questions?.length || 0}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        <Link to={`/content-creator?edit=quiz&id=${quiz._id}`} className="btn-secondary text-sm px-3 py-1">
+                        <button
+                          onClick={() => startEdit(quiz, 'quiz')}
+                          className="btn-secondary text-sm px-3 py-1"
+                          disabled={user?.role === 'teacher' && quiz.createdBy !== user?._id}
+                        >
                           Modifier
-                        </Link>
-                        {(user?.role === 'admin' || (user?.role === 'teacher' && quiz.createdBy === user?._id)) && (
+                        </button>
+                        {(user?.role === 'admin' || (user?.role === 'teacher' && (quiz.createdBy?._id === user?._id || quiz.createdBy === user?._id))) && (
                           <button
                             onClick={() => setShowDeleteModal({ type: 'quiz', id: quiz._id, name: quiz.title })}
                             className="btn-danger text-sm px-3 py-1"
@@ -559,16 +586,20 @@ const ContentManagement = () => {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        <Link to={`/content-creator?edit=project&id=${project._id}`} className="btn-secondary text-sm px-3 py-1">
+                        <button
+                          onClick={() => startEdit(project, 'project')}
+                          className="btn-secondary text-sm px-3 py-1"
+                          disabled={user?.role === 'teacher' && project.createdBy !== user?._id && project.createdBy?._id !== user?._id}
+                        >
                           Modifier
-                        </Link>
+                        </button>
                         <button
                           onClick={() => handleToggleActive('project', project)}
                           className="btn-secondary text-sm px-3 py-1"
                         >
                           {project.status === 'active' ? 'Archiver' : 'Activer'}
                         </button>
-                        {(user?.role === 'admin' || (user?.role === 'teacher' && project.createdBy === user?._id)) && (
+                        {(user?.role === 'admin' || (user?.role === 'teacher' && (project.createdBy?._id === user?._id || project.createdBy === user?._id))) && (
                           <button
                             onClick={() => setShowDeleteModal({ type: 'project', id: project._id, name: project.name })}
                             className="btn-danger text-sm px-3 py-1"
