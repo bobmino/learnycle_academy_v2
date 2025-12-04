@@ -173,9 +173,7 @@ export const userService = {
 };
 
 export const adminService = {
-  seedProfessional: () => API.post('/admin/seed-professional'),
-  initializeDatabase: () => API.post('/admin/init-database'),
-  reorganizeContent: () => API.post('/admin/reorganize-content')
+  initializeDatabase: () => API.post('/admin/init-database')
 };
 
 export const groupService = {

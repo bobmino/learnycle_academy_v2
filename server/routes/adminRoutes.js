@@ -13,9 +13,5 @@ router.post('/init-database', initializeDatabase);
 // Organize content into "Projet clé en main" formation
 router.post('/organize-formation', organizeFormationContent);
 
-// Reorganize content (modules → lessons in Economy module)
-const { reorganizeContentData } = require('../controllers/adminController');
-router.post('/reorganize-content', reorganizeContentData);
-
 module.exports = router;
 

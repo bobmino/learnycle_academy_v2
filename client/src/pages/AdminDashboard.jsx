@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { 
   userService, 
   prospectService, 
-  adminService,
   groupService,
   moduleService,
   gradeService,
@@ -25,8 +24,6 @@ const AdminDashboard = () => {
   const [analytics, setAnalytics] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [reorganizing, setReorganizing] = useState(false);
-  const [reorganizeMessage, setReorganizeMessage] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -83,38 +80,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleReorganizeContent = async () => {
-    if (!window.confirm(
-      '📚 Création de la formation "Projet clé en main"\n\n' +
-      'Cette action va créer :\n' +
-      '- Un module "Économie" avec toutes les leçons existantes\n' +
-      '- 3 projets d\'études de cas (Café, Restaurant, Hôtel)\n' +
-      '- La formation "Projet clé en main"\n\n' +
-      'Voulez-vous continuer ?'
-    )) {
-      return;
-    }
-
-    setReorganizing(true);
-    setReorganizeMessage('');
-    
-    try {
-      const response = await adminService.reorganizeContent();
-      setReorganizeMessage(
-        `✅ ${response.data.message}. ` +
-        `Module Économie créé avec ${response.data.economyModule?.lessonsCount || 0} leçons. ` +
-        `${response.data.projects || 0} projets d'études de cas créés.`
-      );
-      // Refresh after 3 seconds
-      setTimeout(() => {
-        window.location.reload();
-      }, 3000);
-    } catch (error) {
-      setReorganizeMessage(`❌ Erreur: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setReorganizing(false);
-    }
-  };
 
 
   if (loading) {
@@ -133,44 +98,6 @@ const AdminDashboard = () => {
       <h1 className="section-header mb-8">
         {t('dashboard.admin')}
       </h1>
-
-      {/* Content Reorganization */}
-      <div className="card mb-8">
-        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-          Réorganisation du Contenu
-        </h2>
-        <div className="space-y-4">
-          <div>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              <strong>📚 Création de la formation :</strong> Ce script va créer directement la formation "Projet clé en main" :
-            </p>
-            <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4 space-y-2">
-              <li>Création d'un module <strong>"Économie"</strong> regroupant toutes les leçons existantes</li>
-              <li>Création de 3 projets d'études de cas : <strong>Café, Restaurant, Hôtel</strong></li>
-              <li>Création de la formation <strong>"Projet clé en main"</strong> avec le module Économie</li>
-            </ul>
-            <p className="text-sm text-green-600 dark:text-green-400 mb-4">
-              <strong>✅ Simple et direct :</strong> Aucune conversion complexe, juste création de la nouvelle structure.
-            </p>
-            <button
-              onClick={handleReorganizeContent}
-              disabled={reorganizing}
-              className="btn-primary"
-            >
-              {reorganizing ? 'Réorganisation en cours...' : 'Réorganiser le Contenu'}
-            </button>
-            {reorganizeMessage && (
-              <div className={`mt-4 p-3 rounded-lg ${
-                reorganizeMessage.includes('✅') 
-                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                  : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-              }`}>
-                {reorganizeMessage}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* Stats Overview */}
       <div className="grid md:grid-cols-6 gap-4 mb-8">
