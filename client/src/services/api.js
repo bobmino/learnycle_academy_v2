@@ -1,7 +1,21 @@
 import axios from 'axios';
 
+// For Vercel, the API routes are handled by api/[...slug].js
+// In production, use '/api' as baseURL for same-origin requests
+// In development, use the full URL if VITE_API_URL is set, otherwise '/api'
+const getBaseURL = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  // On Vercel, api/[...slug].js handles /api/* routes
+  // So we use '/api' as baseURL
+  return '/api';
+};
+
+const baseURL = getBaseURL();
+
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: baseURL,
   withCredentials: true, // Important for cookies
   headers: {
     'Content-Type': 'application/json'
@@ -40,7 +54,7 @@ API.interceptors.response.use(
       try {
         // Try to refresh the token
         const refreshResponse = await axios.post(
-          `${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`,
+          `${baseURL}/auth/refresh`,
           {},
           { 
             withCredentials: true,
