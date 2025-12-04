@@ -19,7 +19,8 @@ import BackButton from '../components/BackButton';
 const ContentManagement = () => {
   const { t } = useTranslation();
   const { user } = useSelector((state) => state.auth);
-  const [activeTab, setActiveTab] = useState('modules'); // 'modules', 'lessons', 'quizzes', 'projects'
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'modules'); // 'modules', 'lessons', 'quizzes', 'projects'
   const [modules, setModules] = useState([]);
   const [lessons, setLessons] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
@@ -223,7 +224,10 @@ const ContentManagement = () => {
           {['modules', 'lessons', 'quizzes', 'projects'].map(tab => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                setActiveTab(tab);
+                setSearchParams({ tab });
+              }}
               className={`px-4 py-2 font-medium transition-colors ${
                 activeTab === tab
                   ? 'border-b-2 border-purple-600 text-purple-600 dark:text-purple-400'
@@ -350,7 +354,7 @@ const ContentManagement = () => {
                         >
                           {module.isActive ? 'Désactiver' : 'Activer'}
                         </button>
-                        {(user?.role === 'admin' || module.createdBy === user?._id) && (
+                        {(user?.role === 'admin' || (user?.role === 'teacher' && module.createdBy === user?._id)) && (
                           <button
                             onClick={() => setShowDeleteModal({ type: 'module', id: module._id, name: module.title })}
                             className="btn-danger text-sm px-3 py-1"
@@ -402,7 +406,7 @@ const ContentManagement = () => {
                         <Link to={`/content-creator?edit=lesson&id=${lesson._id}`} className="btn-secondary text-sm px-3 py-1">
                           Modifier
                         </Link>
-                        {(user?.role === 'admin' || lesson.createdBy === user?._id) && (
+                        {(user?.role === 'admin' || (user?.role === 'teacher' && lesson.createdBy === user?._id)) && (
                           <button
                             onClick={() => setShowDeleteModal({ type: 'lesson', id: lesson._id, name: lesson.title })}
                             className="btn-danger text-sm px-3 py-1"
@@ -454,7 +458,7 @@ const ContentManagement = () => {
                         <Link to={`/content-creator?edit=quiz&id=${quiz._id}`} className="btn-secondary text-sm px-3 py-1">
                           Modifier
                         </Link>
-                        {(user?.role === 'admin' || quiz.createdBy === user?._id) && (
+                        {(user?.role === 'admin' || (user?.role === 'teacher' && quiz.createdBy === user?._id)) && (
                           <button
                             onClick={() => setShowDeleteModal({ type: 'quiz', id: quiz._id, name: quiz.title })}
                             className="btn-danger text-sm px-3 py-1"
@@ -524,7 +528,7 @@ const ContentManagement = () => {
                         >
                           {project.status === 'active' ? 'Archiver' : 'Activer'}
                         </button>
-                        {(user?.role === 'admin' || project.createdBy === user?._id) && (
+                        {(user?.role === 'admin' || (user?.role === 'teacher' && project.createdBy === user?._id)) && (
                           <button
                             onClick={() => setShowDeleteModal({ type: 'project', id: project._id, name: project.name })}
                             className="btn-danger text-sm px-3 py-1"

@@ -24,11 +24,15 @@ const CategorySelector = ({
 
   const fetchCategories = async () => {
     try {
+      setLoading(true);
       const params = type ? { type } : {};
       const response = await categoryService.getAll(params);
-      setCategories(response.data.data || []);
+      // Handle both response formats: { data: { data: [...] } } or { data: [...] }
+      const categoriesData = response.data?.data || response.data || [];
+      setCategories(categoriesData);
     } catch (error) {
       console.error('Error fetching categories:', error);
+      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -59,11 +63,16 @@ const CategorySelector = ({
         description: ''
       });
       
-      // Add new category to list
-      setCategories([...categories, response.data.data]);
+      // Refresh categories list to get all categories (including newly created)
+      await fetchCategories();
       
-      // Select the new category
-      onChange(response.data.data._id);
+      // Get the created category ID
+      const createdCategory = response.data?.data || response.data;
+      if (createdCategory?._id) {
+        // Select the new category
+        onChange(createdCategory._id);
+      }
+      
       setShowNewCategoryInput(false);
       setNewCategoryName('');
     } catch (error) {

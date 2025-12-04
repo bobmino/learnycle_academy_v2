@@ -109,59 +109,59 @@ const AdminDashboard = () => {
 
       {/* Stats Overview */}
       <div className="grid md:grid-cols-6 gap-4 mb-8">
-        <div className="dashboard-card">
+        <Link to="/admin?section=users" className="dashboard-card hover:shadow-lg transition-shadow cursor-pointer">
           <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
             Total Users
           </h3>
           <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
             {users.length}
           </div>
-        </div>
+        </Link>
         
-        <div className="dashboard-card">
+        <Link to="/admin?section=users&role=student" className="dashboard-card hover:shadow-lg transition-shadow cursor-pointer">
           <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
             Students
           </h3>
           <div className="text-2xl font-bold text-green-600 dark:text-green-400">
             {users.filter(u => u.role === 'student').length}
           </div>
-        </div>
+        </Link>
 
-        <div className="dashboard-card">
+        <Link to="/admin?section=users&role=teacher" className="dashboard-card hover:shadow-lg transition-shadow cursor-pointer">
           <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
             Teachers
           </h3>
           <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
             {users.filter(u => u.role === 'teacher').length}
           </div>
-        </div>
+        </Link>
 
-        <div className="dashboard-card">
+        <Link to="/groups" className="dashboard-card hover:shadow-lg transition-shadow cursor-pointer">
           <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
             Groups
           </h3>
           <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
             {groups.length}
           </div>
-        </div>
+        </Link>
 
-        <div className="dashboard-card">
+        <Link to="/content-management?tab=modules" className="dashboard-card hover:shadow-lg transition-shadow cursor-pointer">
           <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
             Modules
           </h3>
           <div className="text-2xl font-bold text-pink-600 dark:text-pink-400">
             {modules.length}
           </div>
-        </div>
+        </Link>
 
-        <div className="dashboard-card">
+        <Link to="/admin?section=prospects" className="dashboard-card hover:shadow-lg transition-shadow cursor-pointer">
           <h3 className="text-sm font-semibold mb-2 text-gray-600 dark:text-gray-400">
             Prospects
           </h3>
           <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
             {prospects.length}
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Quick Actions */}
