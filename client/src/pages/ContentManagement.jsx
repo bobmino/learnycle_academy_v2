@@ -8,7 +8,8 @@ import {
   quizService,
   projectService,
   categoryService,
-  adminService
+  adminService,
+  formationService
 } from '../services/api';
 import Breadcrumbs from '../components/Breadcrumbs';
 import BackButton from '../components/BackButton';
@@ -22,7 +23,8 @@ const ContentManagement = () => {
   const { t } = useTranslation();
   const { user } = useSelector((state) => state.auth);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'modules'); // 'modules', 'lessons', 'quizzes', 'projects'
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'formations'); // 'formations', 'modules', 'lessons', 'quizzes', 'projects'
+  const [formations, setFormations] = useState([]);
   const [modules, setModules] = useState([]);
   const [lessons, setLessons] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
@@ -43,7 +45,7 @@ const ContentManagement = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'modules' || activeTab === 'projects') {
+    if (activeTab === 'modules' || activeTab === 'projects' || activeTab === 'formations') {
       fetchModulesForEdit();
     }
     fetchData();
@@ -70,7 +72,20 @@ const ContentManagement = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      if (activeTab === 'modules') {
+      if (activeTab === 'formations') {
+        const response = await formationService.getAll();
+        let data = response.data.data || response.data || [];
+        // Filter by search term
+        if (searchTerm) {
+          data = data.filter(f => 
+            f.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            f.description?.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+        }
+        // Sort
+        data = sortData(data, sortBy, sortOrder);
+        setFormations(data);
+      } else if (activeTab === 'modules') {
         const response = await moduleService.getAll();
         let data = response.data || [];
         // Filter by category
@@ -179,7 +194,10 @@ const ContentManagement = () => {
 
   const handleDelete = async (type, id) => {
     try {
-      if (type === 'module') {
+      if (type === 'formation') {
+        await formationService.delete(id);
+        setFormations(formations.filter(f => f._id !== id));
+      } else if (type === 'module') {
         await moduleService.delete(id);
         setModules(modules.filter(m => m._id !== id));
       } else if (type === 'lesson') {
@@ -201,7 +219,11 @@ const ContentManagement = () => {
 
   const handleToggleActive = async (type, item) => {
     try {
-      if (type === 'module') {
+      if (type === 'formation') {
+        await formationService.update(item._id, { isActive: !item.isActive });
+        setFormations(formations.map(f => f._id === item._id ? { ...f, isActive: !f.isActive } : f));
+        fetchData(); // Refresh data
+      } else if (type === 'module') {
         await moduleService.update(item._id, { isActive: !item.isActive });
         setModules(modules.map(m => m._id === item._id ? { ...m, isActive: !m.isActive } : m));
         fetchData(); // Refresh data
@@ -221,7 +243,15 @@ const ContentManagement = () => {
     setEditingType(type);
     setEditingItem(item);
     
-    if (type === 'module') {
+    if (type === 'formation') {
+      setEditFormData({
+        name: item.name,
+        description: item.description,
+        category: item.category?._id || item.category || null,
+        modules: item.modules?.map(m => m._id || m) || [],
+        isActive: item.isActive !== undefined ? item.isActive : true
+      });
+    } else if (type === 'module') {
       setEditFormData({
         title: item.title,
         description: item.description,
@@ -268,7 +298,10 @@ const ContentManagement = () => {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      if (editingType === 'module') {
+      if (editingType === 'formation') {
+        await formationService.update(editingItem._id, editFormData);
+        alert('Formation modifiée avec succès');
+      } else if (editingType === 'module') {
         await moduleService.update(editingItem._id, editFormData);
         alert('Module modifié avec succès');
       } else if (editingType === 'lesson') {
@@ -378,7 +411,7 @@ const ContentManagement = () => {
       {/* Tabs */}
       <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
         <div className="flex space-x-4">
-          {['modules', 'lessons', 'quizzes', 'projects'].map(tab => (
+          {['formations', 'modules', 'lessons', 'quizzes', 'projects'].map(tab => (
             <button
               key={tab}
               onClick={() => {
@@ -391,6 +424,7 @@ const ContentManagement = () => {
                   : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
               }`}
             >
+              {tab === 'formations' && 'Formations'}
               {tab === 'modules' && 'Modules'}
               {tab === 'lessons' && 'Leçons'}
               {tab === 'quizzes' && 'Quiz'}
@@ -423,7 +457,8 @@ const ContentManagement = () => {
               <option value="">Toutes les catégories</option>
               {categories
                 .filter(c => {
-                  if (activeTab === 'modules') return c.type === 'module';
+                  if (activeTab === 'formations') return c.type === 'module';
+                if (activeTab === 'modules') return c.type === 'module';
                   if (activeTab === 'lessons') return c.type === 'lesson';
                   if (activeTab === 'quizzes') return c.type === 'quiz';
                   if (activeTab === 'projects') return c.type === 'project';
@@ -445,7 +480,7 @@ const ContentManagement = () => {
                 className="input-field flex-1"
               >
                 <option value="order">Ordre</option>
-                <option value="title">Titre</option>
+                <option value="title">Titre/Nom</option>
                 <option value="createdAt">Date de création</option>
               </select>
               <button
@@ -460,6 +495,82 @@ const ContentManagement = () => {
       </div>
 
       {/* Content Tables */}
+      {activeTab === 'formations' && (
+        <div className="card">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Formations ({formations.length})</h2>
+            <Link to="/content-creator?tab=formation" className="btn-primary">
+              + Créer une Formation
+            </Link>
+          </div>
+          <div className="space-y-4">
+            {formations.length === 0 ? (
+              <p className="text-center py-8 text-gray-500">Aucune formation trouvée</p>
+            ) : (
+              formations.map(formation => (
+                <div key={formation._id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {formation.name}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        {formation.description}
+                      </p>
+                      <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                        <span>Catégorie: {formation.category?.name || 'Aucune'}</span>
+                        <span>Modules: {formation.modules?.length || 0}</span>
+                        <span className={`px-2 py-1 rounded ${
+                          formation.isActive 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                        }`}>
+                          {formation.isActive ? 'Actif' : 'Inactif'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => startEdit(formation, 'formation')}
+                        className="btn-secondary text-sm px-3 py-1"
+                      >
+                        Modifier
+                      </button>
+                      <button
+                        onClick={() => handleToggleActive('formation', formation)}
+                        className="btn-secondary text-sm px-3 py-1"
+                      >
+                        {formation.isActive ? 'Désactiver' : 'Activer'}
+                      </button>
+                      {(user?.role === 'admin' || (formation.createdBy?._id === user?._id || formation.createdBy === user?._id)) && (
+                        <button
+                          onClick={() => setShowDeleteModal({ type: 'formation', id: formation._id, name: formation.name })}
+                          className="btn-danger text-sm px-3 py-1"
+                        >
+                          Supprimer
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {formation.modules && formation.modules.length > 0 && (
+                    <div className="mt-4 pl-4 border-l-2 border-purple-300 dark:border-purple-700">
+                      <h4 className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">Modules:</h4>
+                      <div className="space-y-2">
+                        {formation.modules.map((module, idx) => (
+                          <div key={module._id || module} className="text-sm text-gray-600 dark:text-gray-400">
+                            {idx + 1}. {module.title || module}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       {activeTab === 'modules' && (
         <div className="card">
           <div className="flex justify-between items-center mb-4">
@@ -727,10 +838,84 @@ const ContentManagement = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 my-8">
             <h3 className="text-xl font-bold mb-4">
-              Modifier {editingType === 'module' ? 'le Module' : editingType === 'lesson' ? 'la Leçon' : editingType === 'quiz' ? 'le Quiz' : 'le Projet'}
+              Modifier {editingType === 'formation' ? 'la Formation' : editingType === 'module' ? 'le Module' : editingType === 'lesson' ? 'la Leçon' : editingType === 'quiz' ? 'le Quiz' : 'le Projet'}
             </h3>
             
             <form onSubmit={handleUpdate} className="space-y-4">
+              {editingType === 'formation' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Nom *</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={editFormData.name || ''}
+                      onChange={handleEditInputChange}
+                      className="input-field"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Description *</label>
+                    <textarea
+                      name="description"
+                      value={editFormData.description || ''}
+                      onChange={handleEditInputChange}
+                      className="input-field"
+                      rows="4"
+                      required
+                    />
+                  </div>
+                  <CategorySelector
+                    value={editFormData.category}
+                    onChange={handleEditCategoryChange}
+                    type="module"
+                    label="Catégorie"
+                  />
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Modules</label>
+                    <div className="max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded p-2">
+                      {modules.map(m => (
+                        <label key={m._id} className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={(editFormData.modules || []).includes(m._id)}
+                            onChange={(e) => {
+                              const currentModules = editFormData.modules || [];
+                              if (e.target.checked) {
+                                setEditFormData(prev => ({
+                                  ...prev,
+                                  modules: [...currentModules, m._id]
+                                }));
+                              } else {
+                                setEditFormData(prev => ({
+                                  ...prev,
+                                  modules: currentModules.filter(id => id !== m._id)
+                                }));
+                              }
+                            }}
+                            className="rounded"
+                          />
+                          <span>{m.title}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="isActive"
+                        checked={editFormData.isActive !== undefined ? editFormData.isActive : true}
+                        onChange={handleEditInputChange}
+                        className="rounded"
+                      />
+                      <span>Actif</span>
+                    </label>
+                  </div>
+                </>
+              )}
+
               {editingType === 'module' && (
                 <>
                   <div>

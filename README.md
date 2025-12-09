@@ -25,8 +25,11 @@ A comprehensive MERN stack learning management system (LMS) for developer educat
 ### Core Functionality
 
 - ✅ User authentication and authorization
+- ✅ **Formation → Module → Content** hierarchical structure
+- ✅ Formation management (create, edit, assign modules)
 - ✅ Module and lesson management
 - ✅ Quiz system with scoring
+- ✅ Project/Case study management
 - ✅ Student progress tracking
 - ✅ Prospect form submission
 - ✅ Three case study modules (Café, Restaurant, Hotel)
@@ -34,6 +37,24 @@ A comprehensive MERN stack learning management system (LMS) for developer educat
 - ✅ Multi-language support (FR/EN/AR)
 - ✅ Light/Dark theme toggle
 - ✅ Responsive design
+
+### Content Structure
+
+The LMS follows a hierarchical structure:
+
+```
+Formation (Course)
+  └── Module
+      ├── Lessons
+      ├── Quizzes
+      └── Projects/Case Studies
+```
+
+- **Formations**: Top-level courses that group related modules
+- **Modules**: Learning units within a formation
+- **Lessons**: Content pages with text and optional PDFs
+- **Quizzes**: Assessments linked to modules
+- **Projects/Case Studies**: Practical assignments (can be transversal across multiple modules)
 
 ## 📂 Project Structure
 
@@ -166,10 +187,12 @@ Frontend runs on http://localhost:5173
 ### Teacher
 
 - All student permissions
-- Create modules
+- Create formations and modules
 - Create lessons
 - Upload PDF documents
 - Create/edit quizzes
+- Create projects/case studies
+- Manage content assigned to them
 
 ### Admin
 
@@ -195,6 +218,9 @@ Frontend runs on http://localhost:5173
 ### Protected
 
 - **Dashboard**: Role-specific dashboards
+- **Content Creator**: Create formations, modules, lessons, quizzes, and projects
+- **Content Management**: Manage all content with hierarchical view
+- **Formations**: List of all formations with their modules
 - **Modules**: List of all learning modules
 - **Module Detail**: Lessons, PDFs, quizzes
 - **Teamwork**: Git collaboration tutorial
@@ -208,6 +234,16 @@ Frontend runs on http://localhost:5173
 - `POST /api/auth/logout` - Logout user
 - `POST /api/auth/refresh` - Refresh access token
 - `GET /api/auth/me` - Get current user
+
+### Formations
+
+- `GET /api/formations` - Get all formations
+- `GET /api/formations/:id` - Get formation by ID
+- `POST /api/formations` - Create formation (Teacher/Admin)
+- `PUT /api/formations/:id` - Update formation (Teacher/Admin)
+- `DELETE /api/formations/:id` - Delete formation (Teacher/Admin)
+- `POST /api/formations/:id/modules` - Add module to formation
+- `DELETE /api/formations/:id/modules/:moduleId` - Remove module from formation
 
 ### Modules
 
@@ -322,9 +358,11 @@ Student: student@learncycle.com / student123
 
 - [x] User authentication (JWT + HttpOnly cookies)
 - [x] Role-based access control
-- [x] Module management
+- [x] Formation management (hierarchical structure)
+- [x] Module management with formation assignment
 - [x] Lesson management with PDF upload
 - [x] Quiz system
+- [x] Project/Case study management
 - [x] Progress tracking
 - [x] Prospect form
 - [x] Three case study modules
@@ -335,6 +373,7 @@ Student: student@learncycle.com / student123
 - [x] Admin dashboard
 - [x] Teacher dashboard
 - [x] Student dashboard
+- [x] Content creation and management interface
 
 ## 🤝 Contributing
 

@@ -7,7 +7,9 @@ import {
   lessonService, 
   quizService,
   projectService,
-  userService
+  userService,
+  formationService,
+  categoryService
 } from '../services/api';
 import Breadcrumbs from '../components/Breadcrumbs';
 import BackButton from '../components/BackButton';
@@ -21,11 +23,18 @@ const ContentCreator = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const [activeTab, setActiveTab] = useState('module'); // 'module', 'lesson', 'quiz', 'project'
+  const [activeTab, setActiveTab] = useState('formation'); // 'formation', 'module', 'lesson', 'quiz', 'project'
   const [modules, setModules] = useState([]);
+  const [formations, setFormations] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
+    // Formation
+    formationName: '',
+    formationDescription: '',
+    formationCategory: null,
+    selectedModules: [],
     // Module
     title: '',
     description: '',
@@ -36,6 +45,7 @@ const ContentCreator = () => {
     projectRequired: false,
     isActive: true,
     moduleCategory: null,
+    moduleFormation: null,
     autoUnlockOnProjectValidation: false,
     // Lesson
     lessonTitle: '',
@@ -64,6 +74,8 @@ const ContentCreator = () => {
 
   useEffect(() => {
     fetchModules();
+    fetchFormations();
+    fetchCategories();
     if (user?.role === 'admin') {
       fetchTeachers();
     }
@@ -87,6 +99,24 @@ const ContentCreator = () => {
       setTeachers(teachersList);
     } catch (error) {
       console.error('Failed to fetch teachers:', error);
+    }
+  };
+
+  const fetchFormations = async () => {
+    try {
+      const response = await formationService.getAll();
+      setFormations(response.data.data || response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch formations:', error);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await categoryService.getAll();
+      setCategories(response.data.data || response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
     }
   };
 
@@ -118,6 +148,43 @@ const ContentCreator = () => {
     });
   };
 
+  const handleFormationModuleToggle = (moduleId) => {
+    setFormData(prev => {
+      const currentModules = prev.selectedModules || [];
+      const isSelected = currentModules.includes(moduleId);
+      return {
+        ...prev,
+        selectedModules: isSelected
+          ? currentModules.filter(id => id !== moduleId)
+          : [...currentModules, moduleId]
+      };
+    });
+  };
+
+  const handleCreateFormation = async (e) => {
+    e.preventDefault();
+    try {
+      const formationData = {
+        name: formData.formationName,
+        description: formData.formationDescription,
+        category: formData.formationCategory,
+        modules: formData.selectedModules || []
+      };
+      
+      const response = await formationService.create(formationData);
+      alert('Formation créée avec succès');
+      setFormData(prev => ({ 
+        ...prev, 
+        formationName: '', 
+        formationDescription: '',
+        selectedModules: []
+      }));
+      fetchFormations();
+    } catch (error) {
+      alert('Erreur: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
   const handleCreateModule = async (e) => {
     e.preventDefault();
     try {
@@ -131,6 +198,7 @@ const ContentCreator = () => {
         projectRequired: formData.projectRequired,
         isActive: formData.isActive,
         category: formData.moduleCategory,
+        formation: formData.moduleFormation || null,
         autoUnlockOnProjectValidation: formData.autoUnlockOnProjectValidation
       };
       
@@ -293,6 +361,16 @@ const ContentCreator = () => {
       {/* Tabs */}
       <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
         <button
+          onClick={() => setActiveTab('formation')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === 'formation'
+              ? 'border-b-2 border-purple-600 text-purple-600 dark:text-purple-400'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+          }`}
+        >
+          🎓 Formation
+        </button>
+        <button
           onClick={() => setActiveTab('module')}
           className={`px-4 py-2 font-medium transition-colors ${
             activeTab === 'module'
@@ -300,7 +378,7 @@ const ContentCreator = () => {
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
         >
-          📚 Module/Formation
+          📚 Module
         </button>
         <button
           onClick={() => setActiveTab('lesson')}
@@ -334,10 +412,77 @@ const ContentCreator = () => {
         </button>
       </div>
 
+      {/* Formation Form */}
+      {activeTab === 'formation' && (
+        <div className="card">
+          <h2 className="section-subheader mb-4">Créer une Formation</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Une formation regroupe plusieurs modules. Créez d'abord la formation, puis ajoutez-y des modules.
+          </p>
+          <form onSubmit={handleCreateFormation} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Nom de la Formation *</label>
+              <input
+                type="text"
+                name="formationName"
+                value={formData.formationName}
+                onChange={handleInputChange}
+                className="input-field"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Description *</label>
+              <textarea
+                name="formationDescription"
+                value={formData.formationDescription}
+                onChange={handleInputChange}
+                className="input-field"
+                rows="4"
+                required
+              />
+            </div>
+            <CategorySelector
+              value={formData.formationCategory}
+              onChange={(categoryId) => handleCategoryChange(categoryId, 'formationCategory')}
+              type="module"
+              label="Catégorie"
+              className="mb-4"
+            />
+            <div>
+              <label className="block text-sm font-medium mb-2">Modules à inclure (optionnel - peut être ajouté plus tard)</label>
+              <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-300 rounded-md p-3 dark:border-gray-600">
+                {modules.length === 0 ? (
+                  <p className="text-sm text-gray-500">Aucun module disponible. Créez d'abord des modules.</p>
+                ) : (
+                  modules.map(module => (
+                    <label key={module._id} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                      <input
+                        type="checkbox"
+                        checked={formData.selectedModules.includes(module._id)}
+                        onChange={() => handleFormationModuleToggle(module._id)}
+                        className="rounded"
+                      />
+                      <span className="text-gray-900 dark:text-white">{module.title}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+            <button type="submit" className="btn-primary">
+              Créer la Formation
+            </button>
+          </form>
+        </div>
+      )}
+
       {/* Module Form */}
       {activeTab === 'module' && (
         <div className="card">
-          <h2 className="section-subheader mb-4">Créer un Module/Formation</h2>
+          <h2 className="section-subheader mb-4">Créer un Module</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Un module peut être associé à une formation. Créez d'abord une formation si nécessaire.
+          </p>
           <form onSubmit={handleCreateModule} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-2">Titre *</label>
@@ -453,6 +598,25 @@ const ContentCreator = () => {
               label="Catégorie"
               className="mb-4"
             />
+            <div>
+              <label className="block text-sm font-medium mb-2">Formation (optionnel)</label>
+              <select
+                name="moduleFormation"
+                value={formData.moduleFormation || ''}
+                onChange={handleInputChange}
+                className="input-field"
+              >
+                <option value="">Aucune formation</option>
+                {formations.map(formation => (
+                  <option key={formation._id} value={formation._id}>
+                    {formation.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Sélectionnez une formation pour associer ce module. Vous pouvez aussi l'ajouter plus tard.
+              </p>
+            </div>
             {user?.role === 'admin' && teachers.length > 0 && (
               <div>
                 <label className="block text-sm font-medium mb-2">

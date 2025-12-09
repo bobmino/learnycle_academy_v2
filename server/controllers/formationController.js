@@ -101,6 +101,14 @@ exports.create = async (req, res) => {
       createdBy: req.user._id
     });
     
+    // Update modules to reference this formation
+    if (modules && modules.length > 0) {
+      await Module.updateMany(
+        { _id: { $in: modules } },
+        { $set: { formation: formation._id } }
+      );
+    }
+    
     const populated = await Formation.findById(formation._id)
       .populate('category', 'name description')
       .populate('modules', 'title description order')
@@ -144,14 +152,38 @@ exports.update = async (req, res) => {
       });
     }
     
-    // Validate modules if provided
-    if (req.body.modules && req.body.modules.length > 0) {
-      const existingModules = await Module.find({ _id: { $in: req.body.modules } });
-      if (existingModules.length !== req.body.modules.length) {
-        return res.status(400).json({
-          success: false,
-          message: 'One or more modules not found'
-        });
+    // Handle modules update if provided
+    if (req.body.modules !== undefined) {
+      const oldModuleIds = formation.modules.map(m => m.toString());
+      const newModuleIds = req.body.modules || [];
+      
+      // Validate new modules exist
+      if (newModuleIds.length > 0) {
+        const existingModules = await Module.find({ _id: { $in: newModuleIds } });
+        if (existingModules.length !== newModuleIds.length) {
+          return res.status(400).json({
+            success: false,
+            message: 'One or more modules not found'
+          });
+        }
+      }
+      
+      // Remove formation reference from modules that are no longer in the formation
+      const modulesToRemove = oldModuleIds.filter(id => !newModuleIds.includes(id));
+      if (modulesToRemove.length > 0) {
+        await Module.updateMany(
+          { _id: { $in: modulesToRemove } },
+          { $unset: { formation: '' } }
+        );
+      }
+      
+      // Add formation reference to new modules
+      const modulesToAdd = newModuleIds.filter(id => !oldModuleIds.includes(id));
+      if (modulesToAdd.length > 0) {
+        await Module.updateMany(
+          { _id: { $in: modulesToAdd } },
+          { $set: { formation: formation._id } }
+        );
       }
     }
     
@@ -202,6 +234,14 @@ exports.delete = async (req, res) => {
       });
     }
     
+    // Remove formation reference from all modules
+    if (formation.modules && formation.modules.length > 0) {
+      await Module.updateMany(
+        { _id: { $in: formation.modules } },
+        { $unset: { formation: '' } }
+      );
+    }
+    
     await Formation.findByIdAndDelete(req.params.id);
     
     res.status(200).json({
@@ -213,6 +253,128 @@ exports.delete = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error deleting formation',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @desc    Add module to formation
+ * @route   POST /api/formations/:id/modules
+ * @access  Private (Admin/Teacher)
+ */
+exports.addModule = async (req, res) => {
+  try {
+    const { moduleId } = req.body;
+    const formation = await Formation.findById(req.params.id);
+    
+    if (!formation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Formation not found'
+      });
+    }
+    
+    // Check authorization
+    if (formation.createdBy.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to modify this formation'
+      });
+    }
+    
+    // Check if module exists
+    const module = await Module.findById(moduleId);
+    if (!module) {
+      return res.status(404).json({
+        success: false,
+        message: 'Module not found'
+      });
+    }
+    
+    // Check if module is already in formation
+    if (formation.modules.includes(moduleId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Module is already in this formation'
+      });
+    }
+    
+    // Add module to formation
+    formation.modules.push(moduleId);
+    await formation.save();
+    
+    // Update module to reference formation
+    module.formation = formation._id;
+    await module.save();
+    
+    const populated = await Formation.findById(formation._id)
+      .populate('category', 'name description')
+      .populate('modules', 'title description order')
+      .populate('createdBy', 'name email');
+    
+    res.status(200).json({
+      success: true,
+      data: populated
+    });
+  } catch (error) {
+    console.error('Error adding module to formation:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error adding module to formation',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @desc    Remove module from formation
+ * @route   DELETE /api/formations/:id/modules/:moduleId
+ * @access  Private (Admin/Teacher)
+ */
+exports.removeModule = async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const formation = await Formation.findById(req.params.id);
+    
+    if (!formation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Formation not found'
+      });
+    }
+    
+    // Check authorization
+    if (formation.createdBy.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to modify this formation'
+      });
+    }
+    
+    // Remove module from formation
+    formation.modules = formation.modules.filter(
+      m => m.toString() !== moduleId
+    );
+    await formation.save();
+    
+    // Remove formation reference from module
+    await Module.findByIdAndUpdate(moduleId, { $unset: { formation: '' } });
+    
+    const populated = await Formation.findById(formation._id)
+      .populate('category', 'name description')
+      .populate('modules', 'title description order')
+      .populate('createdBy', 'name email');
+    
+    res.status(200).json({
+      success: true,
+      data: populated
+    });
+  } catch (error) {
+    console.error('Error removing module from formation:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error removing module from formation',
       error: error.message
     });
   }

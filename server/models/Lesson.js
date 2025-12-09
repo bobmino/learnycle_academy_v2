@@ -53,4 +53,10 @@ const lessonSchema = new mongoose.Schema({
   }
 });
 
+// Index for efficient queries
+lessonSchema.index({ module: 1 });
+lessonSchema.index({ category: 1 });
+lessonSchema.index({ order: 1 });
+lessonSchema.index({ createdBy: 1 });
+
 module.exports = mongoose.model('Lesson', lessonSchema);

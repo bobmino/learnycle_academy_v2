@@ -4,6 +4,7 @@ const ModuleOrder = require('../models/ModuleOrder');
 const ModuleApproval = require('../models/ModuleApproval');
 const User = require('../models/User');
 const Group = require('../models/Group');
+const Formation = require('../models/Formation');
 
 /**
  * @desc    Get all modules (filtered by user preferences)
@@ -212,6 +213,15 @@ const createModule = async (req, res) => {
       createdBy: req.user._id
     });
 
+    // If formation is provided, add module to formation's modules array
+    if (formation) {
+      const formationDoc = await Formation.findById(formation);
+      if (formationDoc && !formationDoc.modules.includes(module._id)) {
+        formationDoc.modules.push(module._id);
+        await formationDoc.save();
+      }
+    }
+
     await module.populate('category', 'name');
     await module.populate('formation', 'name');
     res.status(201).json(module);
@@ -239,6 +249,10 @@ const updateModule = async (req, res) => {
       return res.status(403).json({ message: 'You can only modify your own modules' });
     }
 
+    // Handle formation change
+    const oldFormationId = module.formation ? module.formation.toString() : null;
+    const newFormationId = req.body.formation !== undefined ? (req.body.formation || null) : null;
+
     // Update fields
     if (req.body.title !== undefined) module.title = req.body.title;
     if (req.body.description !== undefined) module.description = req.body.description;
@@ -255,6 +269,30 @@ const updateModule = async (req, res) => {
     }
 
     const updatedModule = await module.save();
+
+    // Update formation references if formation changed
+    if (oldFormationId !== newFormationId) {
+      // Remove from old formation
+      if (oldFormationId) {
+        const oldFormation = await Formation.findById(oldFormationId);
+        if (oldFormation) {
+          oldFormation.modules = oldFormation.modules.filter(
+            m => m.toString() !== module._id.toString()
+          );
+          await oldFormation.save();
+        }
+      }
+      
+      // Add to new formation
+      if (newFormationId) {
+        const newFormation = await Formation.findById(newFormationId);
+        if (newFormation && !newFormation.modules.includes(module._id)) {
+          newFormation.modules.push(module._id);
+          await newFormation.save();
+        }
+      }
+    }
+
     await updatedModule.populate('category', 'name');
     await updatedModule.populate('formation', 'name');
     res.json(updatedModule);
@@ -280,6 +318,17 @@ const deleteModule = async (req, res) => {
     if (req.user.role === 'teacher' && module.createdBy && 
         module.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'You can only delete your own modules' });
+    }
+
+    // Remove module from formation if it's in one
+    if (module.formation) {
+      const formation = await Formation.findById(module.formation);
+      if (formation) {
+        formation.modules = formation.modules.filter(
+          m => m.toString() !== module._id.toString()
+        );
+        await formation.save();
+      }
     }
 
     // Delete all lessons associated with this module

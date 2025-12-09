@@ -275,7 +275,9 @@ export const formationService = {
   getById: (id) => API.get(`/formations/${id}`),
   create: (data) => API.post('/formations', data),
   update: (id, data) => API.put(`/formations/${id}`, data),
-  delete: (id) => API.delete(`/formations/${id}`)
+  delete: (id) => API.delete(`/formations/${id}`),
+  addModule: (id, moduleId) => API.post(`/formations/${id}/modules`, { moduleId }),
+  removeModule: (id, moduleId) => API.delete(`/formations/${id}/modules/${moduleId}`)
 };
 
 export default API;

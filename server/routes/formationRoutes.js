@@ -6,7 +6,9 @@ const {
   getById,
   create,
   update,
-  delete: deleteFormation
+  delete: deleteFormation,
+  addModule,
+  removeModule
 } = require('../controllers/formationController');
 
 // Get all formations - accessible to all
@@ -23,6 +25,12 @@ router.put('/:id', protect, roleRequired('admin', 'teacher'), update);
 
 // Delete formation - Admin/Teacher only
 router.delete('/:id', protect, roleRequired('admin', 'teacher'), deleteFormation);
+
+// Add module to formation - Admin/Teacher only
+router.post('/:id/modules', protect, roleRequired('admin', 'teacher'), addModule);
+
+// Remove module from formation - Admin/Teacher only
+router.delete('/:id/modules/:moduleId', protect, roleRequired('admin', 'teacher'), removeModule);
 
 module.exports = router;
 

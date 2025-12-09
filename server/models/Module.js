@@ -71,4 +71,10 @@ const moduleSchema = new mongoose.Schema({
   }
 });
 
+// Index for efficient queries
+moduleSchema.index({ formation: 1 });
+moduleSchema.index({ category: 1 });
+moduleSchema.index({ isActive: 1 });
+moduleSchema.index({ createdBy: 1 });
+
 module.exports = mongoose.model('Module', moduleSchema);

@@ -53,4 +53,10 @@ const quizSchema = new mongoose.Schema({
   }
 });
 
+// Index for efficient queries
+quizSchema.index({ module: 1 });
+quizSchema.index({ category: 1 });
+quizSchema.index({ embeddedInLesson: 1 });
+quizSchema.index({ createdBy: 1 });
+
 module.exports = mongoose.model('Quiz', quizSchema);
